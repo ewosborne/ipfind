@@ -142,8 +142,14 @@ func main() {
 			cli.BoolFlag{Name: "subnet, s", Usage: "print lines with CIDR blocks that contain the query"},
 			cli.BoolFlag{Name: "longest-match, l", Usage: "print lines containing the most-specific CIDR(s) that match the query"},
 			cli.StringFlag{Name: "mask-range", Usage: "mask range MIN-MAX to filter candidate CIDRs"},
+			cli.BoolFlag{Name: "version, v", Usage: "print version and exit"},
 		},
 		Action: func(c *cli.Context) error {
+			// print version and exit if requested
+			if c.Bool("version") {
+				fmt.Println("0.1.0")
+				return nil
+			}
 			exact := c.Bool("exact")
 			subnet := c.Bool("subnet")
 			longest := c.Bool("longest-match")
@@ -194,6 +200,9 @@ func main() {
 				return cli.NewExitError("query (IP or IP/mask) is required", 2)
 			}
 			queryArg := c.Args().Get(0)
+			if strings.HasPrefix(queryArg, "-") {
+				return cli.NewExitError("mode flags must be followed by the query IP; use: ipfind -s <IP> [file] [--mask-range <MIN-MAX>]", 2)
+			}
 			fileArg := ""
 			if c.NArg() >= 2 {
 				fileArg = c.Args().Get(1)
