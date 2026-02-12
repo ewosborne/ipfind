@@ -1,0 +1,7 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "go": true,
+        "just": true,
+        "gofmt": true
+    }
+}

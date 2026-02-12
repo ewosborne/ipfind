@@ -1,0 +1,10 @@
+plain ip 1.2.3.4 appears here
+cidr1: 1.2.3.128/25
+cidr2: 1.0.0.0/8
+cidr3: 1.2.3.0/24
+cidr4: 1.2.3.0/24, 1.2.3.128/25, 1.0.0.0/8
+
+small net: 1.2.3.4/32
+another: 10.0.0.0/8 some text
+overlap: 1.2.3.0/25
+weird: 1.2.3.4/31 and 1.2.3.4
