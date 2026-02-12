@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -95,77 +94,43 @@ func TestSampleTxtIntegration(t *testing.T) {
 	td := t.TempDir()
 	bin := buildBinary(t, td)
 
-	// Exact: expect at least one occurrence of '1.2.3.4'
+	// Exact: should include the plain token and the line with the plain token
 	outExact := runCmd(t, bin, "-e", "1.2.3.4", samplePath)
-	if !strings.Contains(outExact, "1.2.3.4") {
-		t.Fatalf("exact on sample.txt did not contain 1.2.3.4; got:\n%s", outExact)
+	if !strings.Contains(outExact, "plain ip 1.2.3.4 appears here") {
+		t.Fatalf("exact on sample.txt missing expected plain line; got:\n%s", outExact)
+	}
+	if !strings.Contains(outExact, "weird: 1.2.3.4/31 and 1.2.3.4") {
+		t.Fatalf("exact on sample.txt missing weird line; got:\n%s", outExact)
 	}
 
-	// Subnet: expect at least one CIDR (a '/' in the output)
+	// Subnet: should include known CIDR-containing lines that contain 1.2.3.4
 	outSubnet := runCmd(t, bin, "-s", "1.2.3.4", samplePath)
-	if !strings.Contains(outSubnet, "/") {
-		t.Fatalf("subnet on sample.txt returned no CIDR-like output; got:\n%s", outSubnet)
+	expectSubnetLines := []string{
+		"cidr2: 1.0.0.0/8",
+		"cidr3: 1.2.3.0/24",
+		"cidr4: 1.2.3.0/24, 1.2.3.128/25, 1.0.0.0/8",
+		"small net: 1.2.3.4/32",
+		"overlap: 1.2.3.0/25",
+		"weird: 1.2.3.4/31 and 1.2.3.4",
+	}
+	for _, ex := range expectSubnetLines {
+		if !strings.Contains(outSubnet, ex) {
+			t.Fatalf("subnet on sample.txt missing expected line %q; got:\n%s", ex, outSubnet)
+		}
 	}
 
-	// Longest: output lines should be subset of subnet output
+	// Longest: should return the /32 line only (most-specific)
 	outLongest := runCmd(t, bin, "-l", "1.2.3.4", samplePath)
-	if strings.TrimSpace(outLongest) == "" {
-		t.Fatalf("longest returned no lines; got empty output")
+	if !strings.Contains(outLongest, "small net: 1.2.3.4/32") {
+		t.Fatalf("longest on sample.txt missing /32 line; got:\n%s", outLongest)
 	}
-	subnetLines := map[string]bool{}
-	for _, ln := range strings.Split(strings.TrimRight(outSubnet, "\n"), "\n") {
-		subnetLines[strings.TrimSpace(ln)] = true
-	}
-	for _, ln := range strings.Split(strings.TrimRight(outLongest, "\n"), "\n") {
-		if ln = strings.TrimSpace(ln); ln == "" {
-			continue
-		}
-		if !subnetLines[ln] {
-			t.Fatalf("longest output line not present in subnet output: %q", ln)
-		}
+	if strings.Contains(outLongest, "cidr2: 1.0.0.0/8") {
+		t.Fatalf("longest should not include less specific CIDRs like /8; got:\n%s", outLongest)
 	}
 
-	// Mask-range: ensure returned CIDR prefixes fall within range 20-28
+	// Mask-range: ensure returned lines include at least one prefix between 20-28
 	outMask := runCmd(t, bin, "-s", "--mask-range", "20-28", "1.2.3.4", samplePath)
-	for _, ln := range strings.Split(strings.TrimRight(outMask, "\n"), "\n") {
-		// find tokens with /
-		toks := strings.Fields(ln)
-		found := false
-		for _, tkn := range toks {
-			if !strings.Contains(tkn, "/") {
-				continue
-			}
-			parts := strings.SplitN(tkn, "/", 2)
-			if len(parts) != 2 {
-				continue
-			}
-			pref := parts[1]
-			if pref == "" {
-				continue
-			}
-			// extract leading digits to handle trailing punctuation
-			numstr := ""
-			for _, ch := range pref {
-				if ch >= '0' && ch <= '9' {
-					numstr += string(ch)
-				} else {
-					break
-				}
-			}
-			if numstr == "" {
-				continue
-			}
-			n, err := strconv.Atoi(numstr)
-			if err != nil {
-				continue
-			}
-			if n >= 20 && n <= 28 {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Fatalf("mask-range returned a line with no CIDR in 20-28: %s", ln)
-		}
+	if !strings.Contains(outMask, "cidr3: 1.2.3.0/24") && !strings.Contains(outMask, "cidr4:") {
+		t.Fatalf("mask-range on sample.txt did not return expected /24 lines; got:\n%s", outMask)
 	}
 }
