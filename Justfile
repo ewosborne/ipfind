@@ -1,5 +1,10 @@
 # justfile for ipfind
 
+hello:
+	go run . 1.2.3.4
+
+b: build
+
 build:
 	go build -o ipfind .
 
