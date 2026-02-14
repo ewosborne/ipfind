@@ -1,4 +1,18 @@
 # CHECKPOINT — ipfind
+TODO:
+ ipv6
+ multicast
+ take in an ip address and optional mask and find all matches (exact / subnet / longest)
+  exact = exactly that network and optional mask
+  subnet = find all subnets which contain that network
+  longest = find all longest matches
+
+subnet and longest can take mask ranges and then they only consider addresses within that range
+
+passed-in address can be a network address (do I need a --net flag?) not just a host.
+
+
+
 
 Date: 2026-02-12
 

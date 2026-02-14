@@ -1,40 +1,16 @@
-ipfind (Go) - find IPv4 addresses and CIDRs in text
+NAME:
+   ipfind - search lines for IPv4 addresses and CIDRs
 
-Build/run:
+USAGE:
+    [global options] command [command options] [arguments...]
 
-```
-go run ipfind.go [flags] <query> [file]
-```
+COMMANDS:
+   help, h  Shows a list of commands or help for one command
 
-Examples:
-
-- Exact token match (token equals query after normalization):
-
-```
-go run ipfind.go -e 1.2.3.4 sample.txt
-go run ipfind.go -e 1.2.3.0/24 sample.txt
-```
-
-- Subnet match (print lines containing CIDRs that contain the query):
-
-```
-go run ipfind.go -s 1.2.3.4 sample.txt
-go run ipfind.go -s 1.2.3.0/28 sample.txt
-```
-
-- Longest-match (print lines containing the most-specific CIDR(s) that match):
-
-```
-go run ipfind.go -l 1.2.3.4 sample.txt
-```
-
-- Mask range filter (only consider CIDRs with prefixlen in range):
-
-```
-go run ipfind.go -s --mask-range 20-28 1.2.3.4 sample.txt
-```
-
-If `file` is omitted or `-` is used, the tool reads from stdin.
-
-Find IP addresses in a file
-
+GLOBAL OPTIONS:
+   --exact, -e          print lines with exact token matches to query
+   --subnet, -s         print lines with CIDR blocks that contain the query
+   --longest-match, -l  print lines containing the most-specific CIDR(s) that match the query
+   --mask-range value   mask range MIN-MAX to filter candidate CIDRs
+   --version, -v        print version and exit
+   --help, -h           show help
