@@ -5,11 +5,16 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
+	"strings"
 )
 
 var ipv4Address = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?)`)
 
 func ipcmd(args cliArgStruct) {
+
+	var a, b, c, d, ipInt int64
+
 	fmt.Printf("args in ipcmd:%+v\n", args)
 	fmt.Println("you want me to find", args.ipaddr)
 
@@ -33,6 +38,20 @@ func ipcmd(args cliArgStruct) {
 
 			// first turn the matched ip address to an int32
 			//. adjust base for mask else assume /32 I guess.tbd.
+			tmp := strings.Split(line, ".")
+
+			a, _ = strconv.ParseInt(tmp[0], 10, 32)
+			a = a << 24
+			b, _ = strconv.ParseInt(tmp[1], 10, 32)
+			b = b << 16
+			c, _ = strconv.ParseInt(tmp[2], 10, 32)
+			c = c << 8
+			d, _ = strconv.ParseInt(tmp[3], 10, 32)
+
+			ipInt = a + b + c + d
+			fmt.Println(a, b, c, d, ipInt)
+
+			// TODO: ok to leave this in a 64bit int?  feels weird.
 
 		}
 
