@@ -9,9 +9,14 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+type cliArgStruct struct {
+	ipaddr                 string
+	exact, longest, subnet bool
+}
+
 func main() {
 
-	var ipaddr string
+	var cliArgs cliArgStruct
 
 	cli.VersionPrinter = func(cmd *cli.Command) {
 		fmt.Printf("version=%s\n", cmd.Root().Version)
@@ -22,31 +27,26 @@ func main() {
 		Arguments: []cli.Argument{
 			&cli.StringArg{
 				Name:        "ip",
-				Destination: &ipaddr},
+				Destination: &cliArgs.ipaddr},
 		},
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
 			{
 				//Required: true,
 				Flags: [][]cli.Flag{
 					{
-						&cli.StringFlag{
-							Name:    "exact",
-							Usage:   "exact match",
-							Aliases: []string{"e"},
+						&cli.BoolFlag{
+							Name:        "longest",
+							Usage:       "longest match",
+							Aliases:     []string{"l"},
+							Destination: &cliArgs.longest,
 						},
 					},
 					{
-						&cli.StringFlag{
-							Name:    "longest",
-							Usage:   "longest match",
-							Aliases: []string{"l"},
-						},
-					},
-					{
-						&cli.StringFlag{
-							Name:    "subnet",
-							Usage:   "subnet match",
-							Aliases: []string{"s"},
+						&cli.BoolFlag{
+							Name:        "subnet",
+							Usage:       "subnet match",
+							Aliases:     []string{"s"},
+							Destination: &cliArgs.subnet,
 						},
 					},
 				},
@@ -56,12 +56,15 @@ func main() {
 		Name:  "ipfind",
 		Usage: "find this ip",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			if cmd.NArg() > 0 {
-				fmt.Println("args", cmd.Args(), cmd.NArg())
-				fmt.Println("first", cmd.Args().Get(0))
-			}
-			ip()
-			fmt.Println("hello from action", ipaddr)
+
+			//fmt.Println("hello fom action L:", ipaddr, cmd.Bool("longest"))
+			//fmt.Println("you want me to find IP", cliArgs.ipaddr)
+
+			// set exact if neither of the other are set
+			cliArgs.exact = !(cliArgs.longest || cliArgs.subnet)
+
+			//fmt.Printf("exact: %v longest: %v, subnet: %v.\n	", cliArgs.exact, cliArgs.longest, cliArgs.subnet)
+			ipcmd(cliArgs)
 			return nil
 		},
 	}
