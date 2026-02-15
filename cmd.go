@@ -10,8 +10,18 @@ import (
 )
 
 // TODO ipv6
+// TODO handle err and nil, don't be lazy
 // TODO print entire routing table https://seancfoley.github.io/IPAddress/ipaddress.html#address-tries
 var ipv4AddressRE = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?)`)
+
+func get_input(args cliArgStruct) *bufio.Scanner {
+	if len(args.inputFile) > 0 {
+		file, _ := os.Open(args.inputFile)
+		return bufio.NewScanner(file)
+	} else {
+		return bufio.NewScanner(os.Stdin)
+	}
+}
 
 func ipcmd(args cliArgStruct) {
 
@@ -23,12 +33,7 @@ func ipcmd(args cliArgStruct) {
 	var scanner *bufio.Scanner
 	var longest_mask_seen int
 	longest_matches := make(map[int][]string)
-	if len(args.inputFile) > 0 {
-		file, _ := os.Open(args.inputFile)
-		scanner = bufio.NewScanner(file)
-	} else {
-		scanner = bufio.NewScanner(os.Stdin)
-	}
+	scanner = get_input(args)
 	for scanner.Scan() {
 		line := scanner.Text()
 		fmt.Printf("\nline is #%s#\n", line)
