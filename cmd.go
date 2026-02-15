@@ -53,7 +53,7 @@ func ipcmd(args cliArgStruct) {
 					fmt.Println("SUBNET CONTAINS", found, findIPv4Addr)
 				}
 			} else if args.longest {
-				fmt.Println("TODO: longest")
+				//fmt.Println("TODO: longest")
 
 				// anything which matches args.subnet is a candidate for longest
 				if found.Contains(findIPv4Addr.GetAddress()) {
