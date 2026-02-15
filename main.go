@@ -19,11 +19,13 @@ type cliArgStruct struct {
 	ipaddr                 string
 	exact, longest, subnet bool
 	inputFile              string
+	networkOnly            bool
 }
 
 func main() {
 
 	var cliArgs cliArgStruct
+	//cliArgs.networkOnly = false /// gotta be a cleaner way to do this
 
 	cli.VersionPrinter = func(cmd *cli.Command) {
 		fmt.Printf("version=%s\n", cmd.Root().Version)
@@ -38,6 +40,14 @@ func main() {
 			&cli.StringArg{
 				Name:        "filename",
 				Destination: &cliArgs.inputFile,
+			},
+		},
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:        "network-only",
+				Value:       false,
+				Usage:       "show only matched networks, not the entire line",
+				Destination: &cliArgs.networkOnly,
 			},
 		},
 
