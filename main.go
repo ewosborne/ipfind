@@ -38,8 +38,15 @@ func main() {
 
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
 			{
-				//Required: true,
 				Flags: [][]cli.Flag{
+					{
+						&cli.BoolFlag{
+							Name:        "exact",
+							Usage:       "exact match",
+							Aliases:     []string{"e"},
+							Destination: &cliArgs.exact,
+						},
+					},
 					{
 						&cli.BoolFlag{
 							Name:        "longest",
@@ -67,8 +74,8 @@ func main() {
 			//fmt.Println("hello fom action L:", ipaddr, cmd.Bool("longest"))
 			//fmt.Println("you want me to find IP", cliArgs.ipaddr)
 
-			// set exact if neither of the other are set
-			cliArgs.exact = !(cliArgs.longest || cliArgs.subnet)
+			// set longest if neither of the other are set
+			cliArgs.longest = !(cliArgs.exact || cliArgs.subnet)
 
 			//fmt.Printf("exact: %v longest: %v, subnet: %v.\n	", cliArgs.exact, cliArgs.longest, cliArgs.subnet)
 			ipcmd(cliArgs)
