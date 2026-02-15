@@ -12,6 +12,7 @@ import (
 type cliArgStruct struct {
 	ipaddr                 string
 	exact, longest, subnet bool
+	inputFile              string
 }
 
 func main() {
@@ -27,8 +28,14 @@ func main() {
 		Arguments: []cli.Argument{
 			&cli.StringArg{
 				Name:        "ip",
-				Destination: &cliArgs.ipaddr},
+				Destination: &cliArgs.ipaddr,
+			},
+			&cli.StringArg{
+				Name:        "filename",
+				Destination: &cliArgs.inputFile,
+			},
 		},
+
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
 			{
 				//Required: true,

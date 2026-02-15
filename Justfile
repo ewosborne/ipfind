@@ -5,7 +5,7 @@ hello:
 
 b: build
 
-build:
+build: fmt
 	go build -o ipfind .
 
 test:

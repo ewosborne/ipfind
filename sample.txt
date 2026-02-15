@@ -8,3 +8,4 @@ small net: 1.2.3.4/32
 another: 10.0.0.0/8 some text
 overlap: 1.2.3.0/25
 weird: 1.2.3.4/31 and 1.2.3.4
+all ones: 255.255.255.255
