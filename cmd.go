@@ -22,6 +22,7 @@ func ipcmd(args cliArgStruct) {
 
 	var scanner *bufio.Scanner
 	var longest_mask_seen int
+	longest_matches := make(map[int][]string)
 	if len(args.inputFile) > 0 {
 		file, _ := os.Open(args.inputFile)
 		scanner = bufio.NewScanner(file)
@@ -54,11 +55,25 @@ func ipcmd(args cliArgStruct) {
 					m := found.GetPrefixLen().Len()
 					longest_mask_seen = max(longest_mask_seen, m)
 					if longest_mask_seen == m {
-						fmt.Println("LONGEST CANDIDATE", found, found.GetPrefixLen(), findIPv4Addr)
+						gpl := found.GetPrefixLen()
+						plen := gpl.Len()
+						if gpl == nil {
+							plen = 32
+						}
+						fmt.Println("LONGEST CANDIDATE", found, plen, findIPv4Addr)
+
+						// TODO: do I want elem or line here? maybe make this a flag?
+						// TODO: if elem then maybe check for unique?
+						//longest_matches[plen] = append(longest_matches[plen], elem)
+						longest_matches[plen] = append(longest_matches[plen], line)
 					}
 				}
 			}
 
 		}
+	}
+	if args.longest {
+		fmt.Printf("match map %v", longest_matches)
+		fmt.Printf("best lines %v", longest_matches[longest_mask_seen])
 	}
 }
