@@ -23,8 +23,8 @@ func ipcmd(args cliArgStruct) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		fmt.Printf("line is #%s#\n", line)
-		if len(ipv4Address.FindString(line)) > 0 {
-			fmt.Println("MATCHED", line)
+		for idx, elem := range ipv4Address.FindAllString(line, -1) {
+			fmt.Println("idx", idx, "elem", elem, "line", line)
 		}
 
 	}
