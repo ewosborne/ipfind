@@ -10,7 +10,8 @@ import (
 )
 
 func main() {
-	var addr string
+
+	var ipaddr string
 
 	cli.VersionPrinter = func(cmd *cli.Command) {
 		fmt.Printf("version=%s\n", cmd.Root().Version)
@@ -18,9 +19,14 @@ func main() {
 	app := &cli.Command{
 
 		Version: "0.0.1",
+		Arguments: []cli.Argument{
+			&cli.StringArg{
+				Name:        "ip",
+				Destination: &ipaddr},
+		},
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
 			{
-				Required: true,
+				//Required: true,
 				Flags: [][]cli.Flag{
 					{
 						&cli.StringFlag{
@@ -54,8 +60,8 @@ func main() {
 				fmt.Println("args", cmd.Args(), cmd.NArg())
 				fmt.Println("first", cmd.Args().Get(0))
 			}
-			fmt.Println("hello from action", cmd.String("addr"), addr)
 			ip()
+			fmt.Println("hello from action", ipaddr)
 			return nil
 		},
 	}
