@@ -1,4 +1,5 @@
 plain ip 1.2.3.4 appears here
+cidr0: 1.2.3.4/32
 cidr1: 1.2.3.128/25
 cidr2: 1.0.0.0/8
 cidr3: 1.2.3.0/24

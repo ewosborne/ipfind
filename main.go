@@ -1,5 +1,11 @@
 package main
 
+/* TODO
+ipv6
+json output?
+print entire routing table?
+*/
+
 import (
 	"context"
 	"fmt"
@@ -23,7 +29,6 @@ func main() {
 		fmt.Printf("version=%s\n", cmd.Root().Version)
 	}
 	app := &cli.Command{
-
 		Version: "0.0.1",
 		Arguments: []cli.Argument{
 			&cli.StringArg{

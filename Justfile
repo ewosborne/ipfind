@@ -3,6 +3,10 @@
 hello:
 	go run . 1.2.3.4
 
+
+bt: test build
+	./ipfind 1.2.3.4 sample.txt -l
+
 b: build
 
 build: fmt

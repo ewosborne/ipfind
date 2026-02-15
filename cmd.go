@@ -9,19 +9,19 @@ import (
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
 
-// TODO: handle mask.
-var ipv4Address = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?)`)
-
-//var ipv4Address = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3})`)
+// TODO ipv6
+// TODO print entire routing table https://seancfoley.github.io/IPAddress/ipaddress.html#address-tries
+var ipv4AddressRE = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?)`)
 
 func ipcmd(args cliArgStruct) {
 
 	fmt.Printf("args in ipcmd:%+v\n", args)
 
 	findIPv4Addr := ipaddr.NewIPAddressString(args.ipaddr)
+	fmt.Printf("looking for %v\n", findIPv4Addr)
 
 	var scanner *bufio.Scanner
-	var matchedLines []string
+	var longest_mask_seen int
 	if len(args.inputFile) > 0 {
 		file, _ := os.Open(args.inputFile)
 		scanner = bufio.NewScanner(file)
@@ -30,31 +30,35 @@ func ipcmd(args cliArgStruct) {
 	}
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Printf("line is #%s#\n", line)
-		for _, elem := range ipv4Address.FindAllString(line, -1) {
-			//fmt.Println("\tidx", idx, "elem", elem)
-			ipv4AddrStr := ipaddr.NewIPAddressString(elem)
-			//fmt.Printf("\t%v: found %v\n", idx, ipv4AddrStr)
+		fmt.Printf("\nline is #%s#\n", line)
+		for _, elem := range ipv4AddressRE.FindAllString(line, -1) {
 
-			if ipv4AddrStr.GetAddress().Contains(findIPv4Addr.GetAddress()) {
-				//fmt.Printf("\t\t%v CONTAINS	%v\n", ipv4AddrStr, findIPv4Addr)
-				if args.exact {
-					fmt.Printf("\t\t%v EXACT %v\n", ipv4AddrStr, findIPv4Addr)
-				} else if args.subnet {
-					// TODO mask range
-					fmt.Printf("\t\t%v SUBNET %v\n", ipv4AddrStr, findIPv4Addr)
-				} else if args.longest {
-					// TODO mask range
-					fmt.Println("TODO LONGEST")
-					matchedLines = append(matchedLines, line)
+			// turn regex match into ip object
+			found := ipaddr.NewIPAddressString(elem).GetAddress()
+
+			if args.exact {
+				gpl := found.GetPrefixLen()
+				plen := gpl.Len()
+				if gpl == nil || plen == 32 {
+					fmt.Printf("EXACT MATCH %v\n", found)
 				}
-				// if exact
-				// if subnet
-				// if longest
+			} else if args.subnet {
+				if found.Contains(findIPv4Addr.GetAddress()) {
+					fmt.Println("SUBNET CONTAINS", found, findIPv4Addr)
+				}
+			} else if args.longest {
+				fmt.Println("TODO: longest")
+
+				// anything which matches args.subnet is a candidate for longest
+				if found.Contains(findIPv4Addr.GetAddress()) {
+					m := found.GetPrefixLen().Len()
+					longest_mask_seen = max(longest_mask_seen, m)
+					if longest_mask_seen == m {
+						fmt.Println("LONGEST CANDIDATE", found, found.GetPrefixLen(), findIPv4Addr)
+					}
+				}
 			}
+
 		}
-	}
-	for _, line := range matchedLines {
-		fmt.Println("matched line", line)
 	}
 }
