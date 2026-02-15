@@ -24,7 +24,16 @@ func ipcmd(args cliArgStruct) {
 		line := scanner.Text()
 		fmt.Printf("line is #%s#\n", line)
 		for idx, elem := range ipv4Address.FindAllString(line, -1) {
-			fmt.Println("idx", idx, "elem", elem, "line", line)
+			fmt.Println("\tidx", idx, "elem", elem)
+
+			// check each found regex against the match criteria somehow and keep or print or skip
+			//  could be more than one match on a line and we need to process one of them for exact, one for subnet, and all for longest
+			// theory being that if it matches exact or subnet we keep it
+			// and if it matches under lpm we need to keep looking and cache this line, not print it
+
+			// first turn the matched ip address to an int32
+			//. adjust base for mask else assume /32 I guess.tbd.
+
 		}
 
 	}
