@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 )
+
+var ipv4Address = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?)`)
 
 func ipcmd(args cliArgStruct) {
 	fmt.Printf("args in ipcmd:%+v\n", args)
@@ -20,6 +23,10 @@ func ipcmd(args cliArgStruct) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		fmt.Printf("line is #%s#\n", line)
+		if len(ipv4Address.FindString(line)) > 0 {
+			fmt.Println("MATCHED", line)
+		}
+
 	}
 
 }
