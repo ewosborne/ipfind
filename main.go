@@ -31,7 +31,9 @@ func main() {
 		fmt.Printf("version=%s\n", cmd.Root().Version)
 	}
 	app := &cli.Command{
-		Version: "0.0.1",
+		Version:                "0.0.1",
+		UseShortOptionHandling: true,
+
 		Arguments: []cli.Argument{
 			&cli.StringArg{
 				Name:        "ip",

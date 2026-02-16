@@ -62,9 +62,10 @@ func has_containing_subnet(matches []string, target *ipaddr.IPAddress, regex *re
 	return false
 }
 
-func get_longest_line_subnet(matches []string, targetIPAddr *ipaddr.IPAddress) (int, error) {
+func get_longest_line_subnet(matches []string, targetIPAddr *ipaddr.IPAddress) (int, string, error) {
 	var longest_line_subnet int
 	longest_line_subnet = -1
+	var longest_line_subnet_network string
 	// walks matches, looks for and returns masklen of longest line
 
 	// NOTE WELL: match is a regex match and doesn't necessarily contain the ip address in question!
@@ -83,17 +84,18 @@ func get_longest_line_subnet(matches []string, targetIPAddr *ipaddr.IPAddress) (
 			mlen = targetAFBits
 		}
 
-		fmt.Printf("longest check: %v\n", match)
+		//fmt.Printf("longest check: %v\n", match)
 		if mlen > longest_line_subnet {
 			longest_line_subnet = mlen
+			longest_line_subnet_network = match
 		}
 	}
 
 	if longest_line_subnet >= 0 {
-		fmt.Println("returning", longest_line_subnet)
-		return longest_line_subnet, nil // should only get called if it'll match TODO better error handling
+		//fmt.Println("returning", longest_line_subnet)
+		return longest_line_subnet, longest_line_subnet_network, nil // should only get called if it'll match TODO better error handling
 	} else {
-		return longest_line_subnet, errors.New("couldn't find any matches in this line")
+		return 0, "", errors.New("couldn't find any matches in this line")
 	}
 }
 
@@ -101,7 +103,7 @@ func ipcmd(args cliArgStruct) {
 
 	// longestCache := make(map[int][]string)
 
-	fmt.Printf("args in ipcmd:%+v\n", args)
+	//fmt.Printf("args in ipcmd:%+v\n", args)
 
 	switch ipv6Regex.Match([]byte(args.ipaddr)) {
 	case true:
@@ -121,7 +123,7 @@ func ipcmd(args cliArgStruct) {
 
 	// args.longest has to make two passes over input or do something bespoke and clever
 	if args.longest {
-		fmt.Println("entering args.longest special path")
+		//fmt.Println("entering args.longest special path")
 
 		var outer_longest int
 		longest_cache := make(map[int][]string)
@@ -140,23 +142,23 @@ func ipcmd(args cliArgStruct) {
 			}
 
 			// find longest subnet in all matches
-			longest_line_subnet, _ := get_longest_line_subnet(matches, targetIPAddr) // TODO handle error
+			longest_line_subnet, longest_line_string, _ := get_longest_line_subnet(matches, targetIPAddr) // TODO handle error
 
-			// TODO this is where I handle -n
-			longest_cache[longest_line_subnet] = append(longest_cache[longest_line_subnet], line)
+			// hack
+			if args.networkOnly {
+				longest_cache[longest_line_subnet] = append(longest_cache[longest_line_subnet], longest_line_string)
+			} else if !args.networkOnly {
+				longest_cache[longest_line_subnet] = append(longest_cache[longest_line_subnet], line)
+			}
 			outer_longest = max(outer_longest, longest_line_subnet)
 		}
 
-		fmt.Printf("longest match seen in entire input is %v\n", outer_longest)
-		fmt.Printf("cache is %v\n", outer_longest)
+		//fmt.Printf("longest match seen in entire input is %v\n", outer_longest)
+		//fmt.Printf("longest match seen is %v\n", outer_longest)
 		for _, tmp := range longest_cache[outer_longest] {
+			// TODO this is where I handle -n maybe?
 			fmt.Printf(" %v\n", tmp)
 		}
-
-		/*
-			then find the largest key in the map
-			and print out every line or network in each matching line
-		*/
 	} else {
 
 		// the other ones just make one pass over the whole thing
