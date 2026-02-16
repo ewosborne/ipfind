@@ -45,6 +45,7 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:        "network-only",
+				Aliases:     []string{"n"},
 				Value:       false,
 				Usage:       "show only matched networks, not the entire line",
 				Destination: &cliArgs.networkOnly,

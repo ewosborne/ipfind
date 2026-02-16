@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -11,13 +12,17 @@ import (
 
 // TODO ipv6 - or is this done?  test it, at least.
 // TODO handle err and nil, don't be lazy
-// TODO logging
+// TODO logging and debugs
+// TODO test cases
 // TODO print entire routing table https://seancfoley.github.io/IPAddress/ipaddress.html#address-tries
+// TODO dump everything into a trie and use it?
+// TODO get rid of this enormously bloated ipaddress library? or make better use of it.
+// TODO tab completion, however that works
 var (
 	ipv4AddressRE = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?)`)
 	ipv6Regex     = regexp.MustCompile(`([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(/\d{1,3})?`)
-	targetAFBits  = 32
-	ipRE          = ipv4AddressRE
+	targetAFBits  int
+	ipRE          *regexp.Regexp
 )
 
 func get_input(args cliArgStruct) *bufio.Scanner {
@@ -29,73 +34,168 @@ func get_input(args cliArgStruct) *bufio.Scanner {
 	}
 }
 
+func has_matching_subnet(matches []string, target *ipaddr.IPAddress, regex *regexp.Regexp) bool {
+	//fmt.Printf("%v matches", len(matches))
+	for _, match := range matches {
+		matchIP := ipaddr.NewIPAddressString(match).GetAddress()
+		//fmt.Printf("\n comparing %T %v %T %v\n", target, target, matchIP, matchIP)
+		if matchIP.Equal(target) {
+			//fmt.Println(" MATCH!")
+			return true
+		}
+	}
+	//fmt.Printf("FALSE\n!")
+	return false
+}
+
+func has_containing_subnet(matches []string, target *ipaddr.IPAddress, regex *regexp.Regexp) bool {
+	// returns true if any match in matches is a subnet which contains target
+	for _, match := range matches {
+		matchIP := ipaddr.NewIPAddressString(match).GetAddress()
+		//fmt.Printf("\n comparing %T %v %T %v\n", target, target, matchIP, matchIP)
+		if matchIP.Contains(target) {
+			//fmt.Println(" MATCH!")
+			return true
+		}
+	}
+	//fmt.Printf("FALSE\n!")
+	return false
+}
+
+func get_longest_line_subnet(matches []string, targetIPAddr *ipaddr.IPAddress) (int, error) {
+	var longest_line_subnet int
+	longest_line_subnet = -1
+	// walks matches, looks for and returns masklen of longest line
+
+	// NOTE WELL: match is a regex match and doesn't necessarily contain the ip address in question!
+	for _, match := range matches {
+		// turn match to address
+		// get its masklen
+		// update longest_line_subnet
+		tmp := ipaddr.NewIPAddressString(match).GetAddress()
+		if !tmp.Contains(targetIPAddr) {
+			continue
+		}
+		mlen := ipaddr.NewIPAddressString(match).GetAddress().GetPrefixLen().Len()
+		// mlen comes out to 0 if it's a host address, I don't like that
+
+		if mlen == 0 {
+			mlen = targetAFBits
+		}
+
+		fmt.Printf("longest check: %v\n", match)
+		if mlen > longest_line_subnet {
+			longest_line_subnet = mlen
+		}
+	}
+
+	if longest_line_subnet >= 0 {
+		fmt.Println("returning", longest_line_subnet)
+		return longest_line_subnet, nil // should only get called if it'll match TODO better error handling
+	} else {
+		return longest_line_subnet, errors.New("couldn't find any matches in this line")
+	}
+}
+
 func ipcmd(args cliArgStruct) {
+
+	// longestCache := make(map[int][]string)
 
 	fmt.Printf("args in ipcmd:%+v\n", args)
 
-	if ipv6Regex.Match([]byte(args.ipaddr)) {
+	switch ipv6Regex.Match([]byte(args.ipaddr)) {
+	case true:
 		targetAFBits = 128
 		ipRE = ipv6Regex
+	case false:
+		targetAFBits = 32
+		ipRE = ipv4AddressRE
 	}
 
-	targetIPAddr := ipaddr.NewIPAddressString(args.ipaddr)
-	fmt.Printf("looking for %v\n", targetIPAddr)
+	targetIPAddr := ipaddr.NewIPAddressString(args.ipaddr).GetAddress()
+	//fmt.Printf("looking for %v\n", targetIPAddr)
 
-	var scanner *bufio.Scanner
-	var longest_mask_seen int
+	scanner := get_input(args)
 
-	longest_matches := make(map[int][]string)
-	scanner = get_input(args)
-	for scanner.Scan() {
-		line := scanner.Text()
-		fmt.Printf("\nline is #%s#\n", line)
-		for _, elem := range ipRE.FindAllString(line, -1) {
+	// NOTES
 
-			// turn regex match into ip object
-			found := ipaddr.NewIPAddressString(elem).GetAddress()
+	// args.longest has to make two passes over input or do something bespoke and clever
+	if args.longest {
+		fmt.Println("entering args.longest special path")
 
-			if args.exact {
-				gpl := found.GetPrefixLen()
-				plen := gpl.Len()
-				if gpl == nil || plen == targetAFBits {
-					fmt.Printf("EXACT MATCH %v\n", found)
+		var outer_longest int
+		longest_cache := make(map[int][]string)
+
+		/* basically this is a two-pass version of args.subnet
+		first do the args.subnet thing and walk all input lines
+		ditch the ones with no match
+		store the entire line of the others in a map, k=masklen, v=[]lines
+		*/
+
+		for scanner.Scan() {
+			line := scanner.Text()
+			matches := ipRE.FindAllString(line, -1)
+			if matches == nil {
+				continue
+			}
+
+			// find longest subnet in all matches
+			longest_line_subnet, _ := get_longest_line_subnet(matches, targetIPAddr) // TODO handle error
+
+			// TODO this is where I handle -n
+			longest_cache[longest_line_subnet] = append(longest_cache[longest_line_subnet], line)
+			outer_longest = max(outer_longest, longest_line_subnet)
+		}
+
+		fmt.Printf("longest match seen in entire input is %v\n", outer_longest)
+		fmt.Printf("cache is %v\n", outer_longest)
+		for _, tmp := range longest_cache[outer_longest] {
+			fmt.Printf(" %v\n", tmp)
+		}
+
+		/*
+			then find the largest key in the map
+			and print out every line or network in each matching line
+		*/
+	} else {
+
+		// the other ones just make one pass over the whole thing
+		for scanner.Scan() {
+			line := scanner.Text()
+
+			// find all IP addresses in the line
+			matches := ipRE.FindAllString(line, -1)
+
+			// if there are no ip addresses in the line, done
+			if matches == nil {
+				continue
+			}
+
+			// then there are four conditions I handle here
+
+			switch {
+			case args.exact:
+				if has_matching_subnet(matches, targetIPAddr, ipRE) {
+					switch {
+					case args.networkOnly:
+						// I guess?  TODO
+						fmt.Printf("%v\n", matches[0])
+					case !args.networkOnly:
+						fmt.Printf("%v\n", line)
+					}
 				}
-			} else if args.subnet {
-				if found.Contains(targetIPAddr.GetAddress()) {
-					fmt.Println("SUBNET CONTAINS", found, targetIPAddr)
-				}
-			} else if args.longest {
-				// anything which matches args.subnet is a candidate for longest
-				if found.Contains(targetIPAddr.GetAddress()) {
-					m := found.GetPrefixLen().Len()
-					longest_mask_seen = max(longest_mask_seen, m)
-					if longest_mask_seen == m {
-						gpl := found.GetPrefixLen()
-						plen := gpl.Len()
-						if gpl == nil {
-							plen = targetAFBits
-						}
-						fmt.Println("LONGEST CANDIDATE", found, plen, targetIPAddr)
 
-						// TODO: do I want elem or line here? maybe make this a flag?
-						// TODO: if elem then maybe check for unique?
-						// TODO: for now I want line, make --network-only a flag.
-						//longest_matches[plen] = append(longest_matches[plen], elem)
-						// fmt.Println("network only? args:", args.networkOnly)
-
-						longest_matches[plen] = append(longest_matches[plen], line)
-
+			case args.subnet:
+				if has_containing_subnet(matches, targetIPAddr, ipRE) {
+					switch {
+					case args.networkOnly:
+						// I guess?  TODO
+						fmt.Printf("%v\n", matches[0])
+					case !args.networkOnly:
+						fmt.Printf("%v\n", line)
 					}
 				}
 			}
-
-			// if foundMatch {
-			// 	longest_matches[plen] = append(longest_matches[plen], line)
-			// }
 		}
-	}
-	if args.longest {
-		fmt.Printf("match map %v\n", longest_matches)
-		fmt.Printf("best lines %v\n", longest_matches[longest_mask_seen])
 	}
 }

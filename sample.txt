@@ -1,6 +1,6 @@
-1.0.0.0/8
-1.2.3.0/24
-1.2.0.0/16
+1.0.0.0/8 classA
+1.2.3.0/24 classC
+1.2.0.0/16 classB
 
 plain ip 1.2.3.4 appears here
 cidr0: 1.2.3.4/32
@@ -12,5 +12,6 @@ cidr4: 1.2.3.0/24, 1.2.3.128/25, 1.0.0.0/8
 small net: 1.2.3.4/32
 another: 10.0.0.0/8 some text
 overlap: 1.2.3.0/25
-weird: 1.2.3.4/31 and 1.2.3.4
+weird: 1.2.3.4/31
+weird2: and 1.2.3.4
 all ones: 255.255.255.255
