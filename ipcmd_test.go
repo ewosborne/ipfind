@@ -81,7 +81,6 @@ func TestIPCmd_ExactCases(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			got := runWithContent(t, c.args, c.content)
 			if c.wantCount >= 0 {
@@ -117,7 +116,6 @@ func TestIPCmd_SubnetAndLongest(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			got := runWithContent(t, c.args, c.content)
 			if c.wantCount >= 0 && len(got) != c.wantCount {
@@ -141,7 +139,6 @@ func TestIPCmd_InvalidAndMalformed(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			got := runWithContent(t, c.args, c.content)
 			if c.wantCount >= 0 && len(got) != c.wantCount {
@@ -168,7 +165,6 @@ func TestIPCmd_EdgeCases(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			got := runWithContent(t, c.args, c.content)
 			if c.wantCount >= 0 && len(got) != c.wantCount {
