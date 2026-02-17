@@ -10,7 +10,6 @@ import (
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
 
-// TODO ipv6 - or is this done?  test it, at least.
 // TODO handle err and nil, don't be lazy
 // TODO logging and debugs
 // TODO test cases
@@ -18,11 +17,16 @@ import (
 // TODO dump everything into a trie and use it?
 // TODO get rid of this enormously bloated ipaddress library? or make better use of it.
 // TODO tab completion, however that works
+
+type afArgsStruct struct {
+	targetAF, targetAFBits int
+	ipRE                   *regexp.Regexp
+}
+
 var (
-	ipv4AddressRE = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?)`)
-	ipv6Regex     = regexp.MustCompile(`([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(/\d{1,3})?`)
-	targetAFBits  int
-	ipRE          *regexp.Regexp
+	ipv4Regex = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?[^.])`)
+	ipv6Regex = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)
+	afArgs    afArgsStruct
 )
 
 func get_input(args cliArgStruct) *bufio.Scanner {
@@ -81,7 +85,7 @@ func get_longest_line_subnet(matches []string, targetIPAddr *ipaddr.IPAddress) (
 		// mlen comes out to 0 if it's a host address, I don't like that
 
 		if mlen == 0 {
-			mlen = targetAFBits
+			mlen = afArgs.targetAFBits
 		}
 
 		//fmt.Printf("longest check: %v\n", match)
@@ -105,17 +109,22 @@ func ipcmd(args cliArgStruct) {
 
 	//fmt.Printf("args in ipcmd:%+v\n", args)
 
-	switch ipv6Regex.Match([]byte(args.ipaddr)) {
+	switch ipv6Regex.MatchString(args.ipaddr) {
 	case true:
-		targetAFBits = 128
-		ipRE = ipv6Regex
+		afArgs = afArgsStruct{
+			targetAFBits: 128,
+			targetAF:     6,
+			ipRE:         ipv6Regex,
+		}
 	case false:
-		targetAFBits = 32
-		ipRE = ipv4AddressRE
+		afArgs = afArgsStruct{
+			targetAFBits: 32,
+			targetAF:     4,
+			ipRE:         ipv4Regex,
+		}
 	}
 
 	targetIPAddr := ipaddr.NewIPAddressString(args.ipaddr).GetAddress()
-	//fmt.Printf("looking for %v\n", targetIPAddr)
 
 	scanner := get_input(args)
 
@@ -136,7 +145,7 @@ func ipcmd(args cliArgStruct) {
 
 		for scanner.Scan() {
 			line := scanner.Text()
-			matches := ipRE.FindAllString(line, -1)
+			matches := afArgs.ipRE.FindAllString(line, -1)
 			if matches == nil {
 				continue
 			}
@@ -166,7 +175,7 @@ func ipcmd(args cliArgStruct) {
 			line := scanner.Text()
 
 			// find all IP addresses in the line
-			matches := ipRE.FindAllString(line, -1)
+			matches := afArgs.ipRE.FindAllString(line, -1)
 
 			// if there are no ip addresses in the line, done
 			if matches == nil {
@@ -177,7 +186,7 @@ func ipcmd(args cliArgStruct) {
 
 			switch {
 			case args.exact:
-				if has_matching_subnet(matches, targetIPAddr, ipRE) {
+				if has_matching_subnet(matches, targetIPAddr, afArgs.ipRE) {
 					switch {
 					case args.networkOnly:
 						// I guess?  TODO
@@ -188,7 +197,7 @@ func ipcmd(args cliArgStruct) {
 				}
 
 			case args.subnet:
-				if has_containing_subnet(matches, targetIPAddr, ipRE) {
+				if has_containing_subnet(matches, targetIPAddr, afArgs.ipRE) {
 					switch {
 					case args.networkOnly:
 						// I guess?  TODO
