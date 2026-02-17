@@ -13,7 +13,7 @@ build: fmt
 	go build -o ipfind .
 
 test:
-	go test ./...
+	go test ./... -v
 
 fmt:
 	gofmt -w .
