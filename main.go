@@ -20,6 +20,7 @@ type cliArgStruct struct {
 	exact, longest, subnet bool
 	inputFile              string
 	networkOnly            bool
+	debug                  bool
 }
 
 func main() {
@@ -33,6 +34,7 @@ func main() {
 	app := &cli.Command{
 		Version:                "0.0.1",
 		UseShortOptionHandling: true,
+		EnableShellCompletion:  true,
 
 		Arguments: []cli.Argument{
 			&cli.StringArg{
@@ -45,6 +47,13 @@ func main() {
 			},
 		},
 		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "debug",
+				Aliases: []string{"d"},
+				//	Value:       true,
+				Usage:       "print debug output",
+				Destination: &cliArgs.debug,
+			},
 			&cli.BoolFlag{
 				Name:        "network-only",
 				Aliases:     []string{"n"},

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"regexp"
 
@@ -10,11 +11,8 @@ import (
 )
 
 // TODO handle err and nil, don't be lazy
-// TODO logging and debugs
 // TODO test cases
 // TODO print entire routing table https://seancfoley.github.io/IPAddress/ipaddress.html#address-tries
-// TODO dump everything into a trie and use it?
-// TODO get rid of this enormously bloated ipaddress library? or make better use of it.
 // TODO tab completion, however that works
 
 type afArgsStruct struct {
@@ -40,8 +38,11 @@ func get_input_scanner(args cliArgStruct) *bufio.Scanner {
 func ipcmd(args cliArgStruct) {
 
 	longestCache := make(map[int][]string)
+	var outputData []string
 
-	fmt.Printf("args in ipcmd:%+v\n", args)
+	if args.debug {
+		log.Printf("args in ipcmd:%+v\n", args)
+	}
 
 	targetIPAddr := ipaddr.NewIPAddressString(args.ipaddr).GetHostAddress()
 
@@ -58,6 +59,8 @@ func ipcmd(args cliArgStruct) {
 			targetAF:     int(ipaddr.IPv6),
 			ipRE:         ipv6Regex,
 		}
+	default:
+		log.Fatalf("couldn't figure out address family for %v\n", args.ipaddr)
 	}
 
 	scanner := get_input_scanner(args)
@@ -70,7 +73,9 @@ func ipcmd(args cliArgStruct) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		//fmt.Printf("SCANNED |%v|\n", line)
+		if args.debug {
+			log.Printf("SCANNED |%v|\n", line)
+		}
 		ipaddrs := afArgs.ipRE.FindAllString(line, -1)
 		if ipaddrs == nil { // this line has no ip addresses at all
 			continue
@@ -85,9 +90,12 @@ func ipcmd(args cliArgStruct) {
 				if ipobj.Equal(targetIPAddr) {
 					switch args.networkOnly {
 					case true:
-						fmt.Printf("%v\n", targetIPAddr)
+						//fmt.Printf("%v\n", targetIPAddr)
+						outputData = append(outputData, targetIPAddr.String())
 					case false:
-						fmt.Printf("%v\n", line)
+						//fmt.Printf("%v\n", line)
+						outputData = append(outputData, line)
+
 					}
 					break // go scan next line
 				} // ipob.Equal()
@@ -101,16 +109,22 @@ func ipcmd(args cliArgStruct) {
 			for _, ip := range ipaddrs {
 				// change ip to object
 				ipobj := ipaddr.NewIPAddressString(ip).GetAddress()
-				//fmt.Printf("IPOBJ |%v|\n", ipobj)
+				if args.debug {
+					fmt.Printf("IPOBJ |%v|\n", ipobj)
+				}
 				//if ipobj.Contains(targetIPAddr) || ipobj.Equal(targetIPAddr) {
 				if ipobj.Contains(targetIPAddr) {
 					switch {
 					case args.subnet:
 						switch args.networkOnly {
 						case true:
-							fmt.Printf("%v\n", ipobj)
+							//fmt.Printf("%v\n", ipobj)
+							outputData = append(outputData, ipobj.String())
+
 						case false:
-							fmt.Printf("%v\n", line)
+							//fmt.Printf("%v\n", line)
+							outputData = append(outputData, line)
+
 						}
 					case args.longest:
 						// get ip mask
@@ -147,105 +161,14 @@ func ipcmd(args cliArgStruct) {
 			longestMask = max(longestMask, key)
 		}
 
-		//fmt.Printf("longest seen |%v|\n", longestMask)
-		for _, item := range longestCache[longestMask] {
-			fmt.Printf("\t%v\n", item)
+		if args.debug {
+			fmt.Printf("longest seen |%v|\n", longestMask)
 		}
-
+		outputData = longestCache[longestMask]
 	}
+
+	for _, item := range outputData {
+		fmt.Printf("\t%v\n", item)
+	}
+
 } // ipcmd
-// TODO here is the special processing for args.longest
-
-// if we're looking for subenet match, almost as easy. just walk matches, check for Contains().  print network or line.
-// in both cases it's OK to stop after the first match
-
-/*
- longest is special.
-
- make one pass over the whole input as if it was subnet match, collecting masklen and (network or line)
- dump it all in a map of k=masklen, v=list of returned items
- then report on that map by finding the longest key and printing each line
- so it's sort of a special case of subnet matching
-*/
-
-// // args.longest has to make two passes over input or do something bespoke and clever
-// if args.longest {
-// 	//fmt.Println("entering args.longest special path")
-
-// 	var outer_longest int
-// 	longest_cache := make(map[int][]string)
-
-// 	/* basically this is a two-pass version of args.subnet
-// 	first do the args.subnet thing and walk all input lines
-// 	ditch the ones with no match
-// 	store the entire line of the others in a map, k=masklen, v=[]lines
-// 	*/
-
-// 	for scanner.Scan() {
-// 		line := scanner.Text()
-// 		matches := afArgs.ipRE.FindAllString(line, -1)
-// 		if matches == nil {
-// 			continue
-// 		}
-
-// 		// find longest subnet in all matches
-// 		longest_line_subnet, longest_line_string, _ := get_longest_line_subnet(matches, targetIPAddr) // TODO handle error
-
-// 		// hack
-// 		if args.networkOnly {
-// 			longest_cache[longest_line_subnet] = append(longest_cache[longest_line_subnet], longest_line_string)
-// 		} else if !args.networkOnly {
-// 			longest_cache[longest_line_subnet] = append(longest_cache[longest_line_subnet], line)
-// 		}
-// 		outer_longest = max(outer_longest, longest_line_subnet)
-// 	}
-
-// 	//fmt.Printf("longest match seen in entire input is %v\n", outer_longest)
-// 	//fmt.Printf("longest match seen is %v\n", outer_longest)
-// 	for _, tmp := range longest_cache[outer_longest] {
-// 		// TODO this is where I handle -n maybe?
-// 		fmt.Printf(" %v\n", tmp)
-// 	}
-// } else {
-
-// 	// the other ones just make one pass over the whole thing
-// 	for scanner.Scan() {
-// 		line := scanner.Text()
-
-// 		// find all IP addresses in the line
-// 		matches := afArgs.ipRE.FindAllString(line, -1)
-
-// 		// if there are no ip addresses in the line, done
-// 		if matches == nil {
-// 			continue
-// 		}
-
-// 		// then there are four conditions I handle here
-
-// 		switch {
-// 		case args.exact:
-// 			if has_matching_subnet(matches, targetIPAddr, afArgs.ipRE) {
-// 				switch args.networkOnly {
-// 				case true:
-// 					// print the first instance of an exact match in the line
-// 					fmt.Printf("%v\n", matches[0])
-// 				case false:
-// 					// print the whole line
-// 					fmt.Printf("%v\n", line)
-// 				}
-// 			}
-
-// 		case args.subnet:
-// 			if has_containing_subnet(matches, targetIPAddr, afArgs.ipRE) {
-// 				switch args.networkOnly {
-// 				case true:
-// 					// print the first instance of an exact match in the line
-// 					fmt.Printf("%v\n", matches[0])
-// 				case false:
-// 					// print the whole line
-// 					fmt.Printf("%v\n", line)
-// 				}
-// 			}
-// 		}
-// 	}
-// }
