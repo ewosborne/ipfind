@@ -72,6 +72,8 @@ func get_longest_line_subnet(matches []string, targetIPAddr *ipaddr.IPAddress) (
 	var longest_line_subnet_network string
 	// walks matches, looks for and returns masklen of longest line
 
+	fmt.Printf("%v matches: %v\n", len(matches), matches)
+
 	// NOTE WELL: match is a regex match and doesn't necessarily contain the ip address in question!
 	for _, match := range matches {
 		// turn match to address
@@ -81,6 +83,7 @@ func get_longest_line_subnet(matches []string, targetIPAddr *ipaddr.IPAddress) (
 		if !tmp.Contains(targetIPAddr) {
 			continue
 		}
+
 		mlen := ipaddr.NewIPAddressString(match).GetAddress().GetPrefixLen().Len()
 		// mlen comes out to 0 if it's a host address, I don't like that
 
@@ -187,22 +190,24 @@ func ipcmd(args cliArgStruct) {
 			switch {
 			case args.exact:
 				if has_matching_subnet(matches, targetIPAddr, afArgs.ipRE) {
-					switch {
-					case args.networkOnly:
-						// I guess?  TODO
+					switch args.networkOnly {
+					case true:
+						// print the first instance of an exact match in the line
 						fmt.Printf("%v\n", matches[0])
-					case !args.networkOnly:
+					case false:
+						// print the whole line
 						fmt.Printf("%v\n", line)
 					}
 				}
 
 			case args.subnet:
 				if has_containing_subnet(matches, targetIPAddr, afArgs.ipRE) {
-					switch {
-					case args.networkOnly:
-						// I guess?  TODO
+					switch args.networkOnly {
+					case true:
+						// print the first instance of an exact match in the line
 						fmt.Printf("%v\n", matches[0])
-					case !args.networkOnly:
+					case false:
+						// print the whole line
 						fmt.Printf("%v\n", line)
 					}
 				}
