@@ -1,11 +1,5 @@
 package main
 
-/* TODO
-ipv6
-json output?
-print entire routing table?
-*/
-
 import (
 	"context"
 	"fmt"
