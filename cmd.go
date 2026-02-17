@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -38,73 +37,6 @@ func get_input_scanner(args cliArgStruct) *bufio.Scanner {
 	}
 }
 
-// returns true if there's a subnet anywhere in matches which is equal to the target
-func has_matching_subnet(matches []string, target *ipaddr.IPAddress, regex *regexp.Regexp) bool {
-	for _, match := range matches {
-		matchIP := ipaddr.NewIPAddressString(match).GetAddress()
-		if matchIP.Equal(target) {
-			return true
-		}
-	}
-	return false
-}
-
-// returns true if any match in matches is a subnet which contains target
-func has_containing_subnet(matches []string, target *ipaddr.IPAddress, regex *regexp.Regexp) bool {
-	for _, match := range matches {
-		matchIP := ipaddr.NewIPAddressString(match).GetAddress()
-		//fmt.Printf("\n comparing %T %v %T %v\n", target, target, matchIP, matchIP)
-		if matchIP.Contains(target) {
-			//fmt.Println(" MATCH!")
-			return true
-		}
-	}
-	//fmt.Printf("FALSE\n!")
-	return false
-}
-
-// returns both the longest matching masklen in a set of matches and the thing it matched against
-// I forget why I have that second one but I think it's to do with printing the line vs. just the network
-func get_longest_line_subnet(matches []string, targetIPAddr *ipaddr.IPAddress) (int, string, error) {
-	var longest_line_subnet int
-	longest_line_subnet = -1
-	var longest_line_subnet_network string
-	// walks matches, looks for and returns masklen of longest line
-
-	fmt.Printf("%v matches: %v\n", len(matches), matches)
-
-	// NOTE WELL: match is a regex match and doesn't necessarily contain the ip address in question!
-	for _, match := range matches {
-		// turn match to address
-		// get its masklen
-		// update longest_line_subnet
-		tmp := ipaddr.NewIPAddressString(match).GetAddress()
-		if !tmp.Contains(targetIPAddr) {
-			continue
-		}
-
-		mlen := ipaddr.NewIPAddressString(match).GetAddress().GetPrefixLen().Len()
-		// mlen comes out to 0 if it's a host address, I don't like that
-
-		if mlen == 0 {
-			mlen = afArgs.targetAFBits
-		}
-
-		//fmt.Printf("longest check: %v\n", match)
-		if mlen > longest_line_subnet {
-			longest_line_subnet = mlen
-			longest_line_subnet_network = match
-		}
-	}
-
-	if longest_line_subnet >= 0 {
-		//fmt.Println("returning", longest_line_subnet)
-		return longest_line_subnet, longest_line_subnet_network, nil // should only get called if it'll match TODO better error handling
-	} else {
-		return 0, "", errors.New("couldn't find any matches in this line")
-	}
-}
-
 func ipcmd(args cliArgStruct) {
 
 	longestCache := make(map[int][]string)
@@ -113,13 +45,14 @@ func ipcmd(args cliArgStruct) {
 
 	targetIPAddr := ipaddr.NewIPAddressString(args.ipaddr).GetHostAddress()
 
-	if targetIPAddr.IsIPv4() {
+	switch {
+	case targetIPAddr.IsIPv4():
 		afArgs = afArgsStruct{
 			targetAFBits: ipaddr.IPv4BitCount,
 			targetAF:     int(ipaddr.IPv4),
 			ipRE:         ipv4Regex,
 		}
-	} else if targetIPAddr.IsIPv6() {
+	case targetIPAddr.IsIPv6():
 		afArgs = afArgsStruct{
 			targetAFBits: ipaddr.IPv6BitCount,
 			targetAF:     int(ipaddr.IPv6),
@@ -160,9 +93,10 @@ func ipcmd(args cliArgStruct) {
 				} // ipob.Equal()
 			} // for range ipaddrs
 		case args.subnet, args.longest:
-			/* I want to do this extensibly.  the only difference between args.subnet and args.longest is that longest has a post-process.
-			if args.subnet - just like args.exact except it's Contains() instead of Equal()
-			if args.longest - just like args.subnet except we save the item in a map instead of printing it.
+			/*
+				the only difference between args.subnet and args.longest is that longest has a post-process.
+				if args.subnet - just like args.exact except it's Contains() instead of Equal()
+				if args.longest - just like args.subnet except we save the item in a map instead of printing it.
 			*/
 			for _, ip := range ipaddrs {
 				// change ip to object
@@ -183,8 +117,8 @@ func ipcmd(args cliArgStruct) {
 						var maskLength int
 						a := ipobj.GetPrefixLen()
 						if a == nil {
-							// raw host
-							maskLength = afArgs.targetAFBits // no mask is nil not 32 or 128.  no idea why.
+							// raw host gets nil prefix len rather than 32 or 128.  no idea why.
+							maskLength = afArgs.targetAFBits
 						} else {
 							maskLength = a.Len()
 						}
