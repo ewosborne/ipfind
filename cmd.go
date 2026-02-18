@@ -163,7 +163,12 @@ func ipcmd(args cliArgStruct) {
 	}
 
 	for _, item := range outputData {
-		fmt.Printf("\t%v\n", item)
+		if args.debug {
+			fmt.Printf("\t(%[1]T) %[1]v\n", item)
+		} else {
+			fmt.Printf("\t%v\n", item)
+
+		}
 	}
 
 } // ipcmd
