@@ -11,8 +11,9 @@ import (
 )
 
 type afArgsStruct struct {
-	targetAF, targetAFBits int
-	ipRE                   *regexp.Regexp
+	targetAF     ipaddr.IPVersion // I don't use this but maybe will later
+	targetAFBits int
+	ipRE         *regexp.Regexp
 }
 
 var (
@@ -45,13 +46,13 @@ func ipcmd(args cliArgStruct) {
 	case targetIPAddr.IsIPv4():
 		afArgs = afArgsStruct{
 			targetAFBits: ipaddr.IPv4BitCount,
-			targetAF:     int(ipaddr.IPv4),
+			targetAF:     ipaddr.IPv4,
 			ipRE:         ipv4Regex,
 		}
 	case targetIPAddr.IsIPv6():
 		afArgs = afArgsStruct{
 			targetAFBits: ipaddr.IPv6BitCount,
-			targetAF:     int(ipaddr.IPv6),
+			targetAF:     ipaddr.IPv6,
 			ipRE:         ipv6Regex,
 		}
 	default:
@@ -76,11 +77,12 @@ func ipcmd(args cliArgStruct) {
 			continue
 		}
 
-		switch {
-		case args.exact:
-			// check each ipaddr to see if it's an exact match for what we're looking for
-			for _, ip := range ipaddrs {
-				// change ip to object
+	Outer:
+		for _, ip := range ipaddrs {
+
+			switch {
+			case args.exact:
+				// check each ipaddr to see if it's an exact match for what we're looking for
 				ipobj := ipaddr.NewIPAddressString(ip).GetHostAddress()
 				if ipobj.Equal(targetIPAddr) {
 					switch args.networkOnly {
@@ -92,17 +94,15 @@ func ipcmd(args cliArgStruct) {
 						outputData = append(outputData, line)
 
 					}
-					break // go scan next line
+					break Outer // go scan next line
 				} // ipob.Equal()
-			} // for range ipaddrs
-		case args.subnet, args.longest:
-			/*
-				the only difference between args.subnet and args.longest is that longest has a post-process.
-				if args.subnet - just like args.exact except it's Contains() instead of Equal()
-				if args.longest - just like args.subnet except we save the item in a map instead of printing it.
-			*/
-			for _, ip := range ipaddrs {
-				// change ip to object
+			case args.subnet, args.longest:
+				/*
+					the only difference between args.subnet and args.longest is that longest has a post-process.
+					if args.subnet - just like args.exact except it's Contains() instead of Equal()
+					if args.longest - just like args.subnet except we save the item in a map instead of printing it.
+				*/
+
 				ipobj := ipaddr.NewIPAddressString(ip).GetAddress()
 				if args.debug {
 					fmt.Printf("IPOBJ |%v|\n", ipobj)
@@ -145,8 +145,8 @@ func ipcmd(args cliArgStruct) {
 						}
 					} // outer switch
 				}
-			} // for range ipaddrs
-		} // case args.subnet, args.longest
+			} // case args.subnet, args.longest
+		}
 	} // for scanner.Scan()
 
 	if args.longest {
@@ -170,5 +170,4 @@ func ipcmd(args cliArgStruct) {
 
 		}
 	}
-
 } // ipcmd

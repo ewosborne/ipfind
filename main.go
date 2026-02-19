@@ -20,7 +20,6 @@ type cliArgStruct struct {
 func main() {
 
 	var cliArgs cliArgStruct
-	//cliArgs.networkOnly = false /// gotta be a cleaner way to do this
 
 	cli.VersionPrinter = func(cmd *cli.Command) {
 		fmt.Printf("version=%s\n", cmd.Root().Version)
@@ -42,9 +41,8 @@ func main() {
 		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:    "debug",
-				Aliases: []string{"d"},
-				//	Value:       true,
+				Name:        "debug",
+				Aliases:     []string{"d"},
 				Usage:       "print debug output",
 				Destination: &cliArgs.debug,
 			},
@@ -56,7 +54,6 @@ func main() {
 				Destination: &cliArgs.networkOnly,
 			},
 		},
-
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
 			{
 				Flags: [][]cli.Flag{
@@ -84,21 +81,17 @@ func main() {
 							Destination: &cliArgs.subnet,
 						},
 					},
-				},
+				}, // Flags:
 			},
-		},
+		}, // MutuallyExclusiveFlags:
 
 		Name:  "ipfind",
 		Usage: "find this ip",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 
-			//fmt.Println("hello fom action L:", ipaddr, cmd.Bool("longest"))
-			//fmt.Println("you want me to find IP", cliArgs.ipaddr)
-
 			// set longest if neither of the other are set
 			cliArgs.longest = !(cliArgs.exact || cliArgs.subnet)
 
-			//fmt.Printf("exact: %v longest: %v, subnet: %v.\n	", cliArgs.exact, cliArgs.longest, cliArgs.subnet)
 			ipcmd(cliArgs)
 			return nil
 		},
