@@ -98,6 +98,7 @@ func ipcmd(args cliArgStruct) error {
 	// ok now do things
 
 	var idx int = 0
+	// TODO DualIPv4v6AssociativeTries
 	trie := ipaddr.NewIPv4AddressAssociativeTrie()
 
 	var longest_subnet_seen int
@@ -138,13 +139,21 @@ func ipcmd(args cliArgStruct) error {
 			slog.Debug("comparing", "a", args.Ipaddr.String(), "b", match.String())
 
 			// just slop it all into a trie
-
 			// .Put() adds the foundmatch struct along with the prefix.
 			//  not sure which I want yet.
 			//trie.Put(match.ToIPv4(), foundmatch{idx: idx, addr: match, line: line})
-			trie.Add(match.ToIPv4())
+
+			// if I have no target IP just dump it all into a trie and continue
+			// if len(args.Ipstring) == 0 {
+			// 	trie.Add(match.ToIPv4())
+			// 	continue
+			// }
 
 			switch {
+			case len(args.Ipstring) == 0: // no target IP address, just populate trie
+				trie.Add(match.ToIPv4())
+				continue // stop looking
+
 			case args.Exact:
 				if args.Ipaddr.Equal(match) {
 					//fmt.Println("FOUND MATCH", match.String(), args.Ipaddr.String(), idx, line)
