@@ -15,13 +15,17 @@ import (
 	"log/slog"
 	"os"
 	"regexp"
+	"slices"
+	"strings"
 
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
 
 var (
 	ipv4Regex = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?)`)
+	//ipv6Regex = regexp.MustCompile(`[^0-9a-fA-F]*([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)[^0-9a-fA-F]*`)
 	ipv6Regex = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)
+
 	//afArgs    afArgsStruct
 )
 
@@ -73,10 +77,18 @@ func get_ipv4_addresses_from_line(line string) []*ipaddr.IPAddress {
 	return get_ip_addresses_from_line(ipv4Regex, line)
 }
 
-/* TODO regex is messy, see below */
-// func get_ipv6_addresses_from_line(line string) []*ipaddr.IPAddress {
-// 	return get_ip_addresses_from_line(ipv6Regex, line)
-// }
+func get_ipv6_addresses_from_line(line string) []*ipaddr.IPAddress {
+
+	// hack because the regex is getting messy but this seems ok.
+	ret := []*ipaddr.IPAddress{}
+	for _, m := range get_ip_addresses_from_line(ipv6Regex, line) {
+		if strings.Contains(m.String(), ":") {
+			ret = append(ret, m)
+		}
+	}
+	return ret
+
+}
 
 func getHostbits(match *ipaddr.IPAddress) int {
 	plen := match.GetPrefixLen().Len() // grr if there's no explicit /mask it's 0 not 32 or 128.  wtf.
@@ -99,7 +111,8 @@ func ipcmd(args cliArgStruct) error {
 
 	var idx int = 0
 	// TODO DualIPv4v6AssociativeTries
-	trie := ipaddr.NewIPv4AddressAssociativeTrie()
+	v4_trie := ipaddr.NewIPv4AddressAssociativeTrie()
+	v6_trie := ipaddr.NewIPv6AddressAssociativeTrie()
 
 	var longest_subnet_seen int
 	longest_subnets := make(map[int][]foundmatch)
@@ -115,6 +128,8 @@ func ipcmd(args cliArgStruct) error {
 
 		//fmt.Printf("\nline %v\n", line)
 		v4_matches := get_ipv4_addresses_from_line(line)
+		v6_matches := get_ipv6_addresses_from_line(line)
+
 		slog.Debug("placeholder", "len", len(v4_matches))
 		//fmt.Printf("v4 matches%v\n", v4_matches)
 
@@ -125,7 +140,7 @@ func ipcmd(args cliArgStruct) error {
 
 		/* TODO: maybe combine v4_matches and v6_matches? */
 		// matches := append(v4_matches, v6_matches...)
-		matches := v4_matches
+		matches := slices.Concat(v4_matches, v6_matches)
 		if len(matches) == 0 {
 			continue
 		}
@@ -144,14 +159,19 @@ func ipcmd(args cliArgStruct) error {
 			//trie.Put(match.ToIPv4(), foundmatch{idx: idx, addr: match, line: line})
 
 			// if I have no target IP just dump it all into a trie and continue
-			// if len(args.Ipstring) == 0 {
-			// 	trie.Add(match.ToIPv4())
-			// 	continue
-			// }
+			if len(args.Ipstring) == 0 {
+				// 	trie.Add(match.ToIPv4())
+				if match.IsIPv4() {
+					v4_trie.Add(match.ToIPv4()) // TODO handle ipv6
+				} else if match.IsIPv6() {
+					v6_trie.Add(match.ToIPv6())
+				}
+				continue
+			}
 
 			switch {
 			case len(args.Ipstring) == 0: // no target IP address, just populate trie
-				trie.Add(match.ToIPv4())
+				// trie.Add(match.ToIPv4()) // TODO: need to handle ipv6 here
 				continue // stop looking
 
 			case args.Exact:
@@ -195,13 +215,18 @@ func ipcmd(args cliArgStruct) error {
 	for _, m := range matchlist {
 		// maybe make the trie here?
 		if args.Trie {
-			trie.Add(m.addr.ToIPv4())
+			if m.addr.IsIPv4() {
+				v4_trie.Add(m.addr.ToIPv4()) // TODO handle ipv6
+			} else if m.addr.IsIPv6() {
+				v6_trie.Add(m.addr.ToIPv6())
+			}
 		} else {
 			fmt.Println(m)
 		}
 	}
 	if args.Trie {
-		fmt.Println(trie)
+		fmt.Println(v4_trie)
+		fmt.Println(v6_trie)
 	}
 	return nil
 }
