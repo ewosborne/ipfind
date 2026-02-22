@@ -59,13 +59,26 @@ func get_ipv4_addresses_from_line(line string) []*ipaddr.IPAddress {
 // 	return get_ip_addresses_from_line(ipv6Regex, line)
 // }
 
+func getHostbits(match *ipaddr.IPAddress) int {
+	plen := match.GetPrefixLen().Len() // grr if there's no explicit /mask it's 0 not 32 or 128.  wtf.
+	if plen == 0 {
+		if match.IsIPv4() {
+			plen = 32
+		} else if match.IsIPv6() {
+			plen = 128
+		}
+	}
+
+	return plen
+}
 func ipcmd(args cliArgStruct) error {
 	slog.Debug("ipcmd", "args", args)
 
 	// ok now do things
 
 	var idx int = 0
-
+	var longest_subnet_seen int
+	longest_subnets := make(map[int][]*ipaddr.IPAddress)
 	scanner := get_input_scanner(args)
 
 	for scanner.Scan() {
@@ -101,18 +114,26 @@ func ipcmd(args cliArgStruct) error {
 			case args.Exact:
 				if args.Ipaddr.Equal(match) {
 					fmt.Println("FOUND MATCH", match.String(), args.Ipaddr.String(), idx, line)
-					// TODO now what?
+					// TODO now what? need a consistent output format.
 				}
 
 			case args.Subnet:
 				if match.Contains(args.Ipaddr) {
 					fmt.Println("CONTAINS", match.String(), args.Ipaddr.String(), idx, line)
 					// TODO now what?
+					//  * add to some list of matches?  track both line and address?  TBD.
 
 				}
 			case args.Longest:
 				fmt.Println("TODO longest match")
 				// just like Subnet but I need to track the longest match
+				if match.Contains(args.Ipaddr) {
+					plen := getHostbits(match)
+					longest_subnet_seen = max(plen, longest_subnet_seen)
+
+					//fmt.Println("LM plen", match, plen)
+					longest_subnets[plen] = append(longest_subnets[plen], match) // TODO
+				}
 
 			case args.Trie:
 				fmt.Println("TODO trie")
@@ -121,5 +142,8 @@ func ipcmd(args cliArgStruct) error {
 		}
 	}
 
+	// deal with args.Longest second pass here
+	fmt.Println("LSS", longest_subnet_seen)
+	fmt.Println("args.longest second pass", longest_subnets[longest_subnet_seen])
 	return nil
 }
