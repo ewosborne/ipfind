@@ -15,6 +15,7 @@ import (
 	"log/slog"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/seancfoley/ipaddress-go/ipaddr"
@@ -92,13 +93,8 @@ func get_ipv6_addresses_from_line(line string) []*ipaddr.IPAddress {
 func getHostbits(match *ipaddr.IPAddress) int {
 	plen := match.GetPrefixLen().Len() // grr if there's no explicit /mask it's 0 not 32 or 128.  wtf.
 	if plen == 0 {
-		if match.IsIPv4() {
-			plen = 32
-		} else if match.IsIPv6() {
-			plen = 128
-		}
+		plen = match.GetBitCount()
 	}
-
 	return plen
 }
 func ipcmd(args cliArgStruct) error {
@@ -132,9 +128,7 @@ func ipcmd(args cliArgStruct) error {
 		slog.Debug("placeholder", "len", len(v4_matches))
 		//fmt.Printf("v4 matches%v\n", v4_matches)
 
-		// matches := append(v4_matches, v6_matches...)
-		// matches := slices.Concat(v4_matches, v6_matches)
-		matches := append(v4_matches, v6_matches...)
+		matches := slices.Concat(v4_matches, v6_matches)
 		if len(matches) == 0 {
 			continue
 		}
@@ -156,7 +150,7 @@ func ipcmd(args cliArgStruct) error {
 			if len(args.Ipstring) == 0 {
 				// 	trie.Add(match.ToIPv4())
 				if match.IsIPv4() {
-					v4_trie.Add(match.ToIPv4()) // TODO handle ipv6
+					v4_trie.Add(match.ToIPv4())
 				} else if match.IsIPv6() {
 					v6_trie.Add(match.ToIPv6())
 				}
@@ -165,9 +159,8 @@ func ipcmd(args cliArgStruct) error {
 
 			switch {
 			case len(args.Ipstring) == 0: // no target IP address, just populate trie
-				// trie.Add(match.ToIPv4()) // TODO: need to handle ipv6 here
 				if match.IsIPv4() {
-					v4_trie.Add(match.ToIPv4()) // TODO handle ipv6
+					v4_trie.Add(match.ToIPv4())
 				} else if match.IsIPv6() {
 					v6_trie.Add(match.ToIPv6())
 				}
@@ -175,14 +168,17 @@ func ipcmd(args cliArgStruct) error {
 
 			case args.Exact:
 				if args.Ipaddr.Equal(match) {
-					//fmt.Println("FOUND MATCH", match.String(), args.Ipaddr.String(), idx, line)
+					slog.Debug("FOUND MATCH", "match", match.String(), "ipaddr", args.Ipaddr.String(), "idx", idx, "line", line)
 					// TODO now what? need a consistent output format.
 					matchlist = append(matchlist, foundmatch{idx: idx, addr: match, line: line})
 				}
 
 			case args.Subnet:
 				if match.Contains(args.Ipaddr) {
-					slog.Debug("CONTAINS", "match", match.String(), "args", args.Ipaddr.String(), "idx", idx, "line", line)
+					slog.Debug("CONTAINS",
+						"match", match.String(),
+						"args", args.Ipaddr.String(),
+						"idx", idx, "line", line)
 					// TODO now what?
 					//  * add to some list of matches?  track both line and address?  TBD.
 					matchlist = append(matchlist, foundmatch{idx: idx, addr: match, line: line})
@@ -194,7 +190,6 @@ func ipcmd(args cliArgStruct) error {
 					plen := getHostbits(match)
 					longest_subnet_seen = max(plen, longest_subnet_seen)
 
-					//fmt.Println("LM plen", match, plen)
 					longest_subnets[plen] = append(longest_subnets[plen], foundmatch{idx: idx, addr: match, line: line}) // TODO
 				}
 
@@ -209,13 +204,11 @@ func ipcmd(args cliArgStruct) error {
 	if args.Longest {
 		matchlist = longest_subnets[longest_subnet_seen]
 	}
-	//fmt.Println("MATCHLIST")
 
 	for _, m := range matchlist {
-		// maybe make the trie here?
 		if args.Trie {
 			if m.addr.IsIPv4() {
-				v4_trie.Add(m.addr.ToIPv4()) // TODO handle ipv6
+				v4_trie.Add(m.addr.ToIPv4())
 			} else if m.addr.IsIPv6() {
 				v6_trie.Add(m.addr.ToIPv6())
 			}
