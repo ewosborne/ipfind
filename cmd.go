@@ -224,8 +224,13 @@ func ipcmd(args cliArgStruct) error {
 		}
 	}
 	if args.Trie {
-		fmt.Println(v4_trie)
-		fmt.Println(v6_trie)
+		if v4_trie.Size() > 0 {
+			fmt.Println(v4_trie)
+		}
+		if v6_trie.Size() > 0 {
+
+			fmt.Println(v6_trie)
+		}
 	}
 	return nil
 }
