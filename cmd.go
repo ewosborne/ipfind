@@ -125,7 +125,6 @@ func ipcmd(args cliArgStruct) error {
 
 				}
 			case args.Longest:
-				fmt.Println("TODO longest match")
 				// just like Subnet but I need to track the longest match
 				if match.Contains(args.Ipaddr) {
 					plen := getHostbits(match)
@@ -143,7 +142,9 @@ func ipcmd(args cliArgStruct) error {
 	}
 
 	// deal with args.Longest second pass here
-	fmt.Println("LSS", longest_subnet_seen)
-	fmt.Println("args.longest second pass", longest_subnets[longest_subnet_seen])
+	if args.Longest {
+		fmt.Println("LSS", longest_subnet_seen)
+		fmt.Println("args.longest second pass", longest_subnets[longest_subnet_seen])
+	}
 	return nil
 }
