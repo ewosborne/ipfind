@@ -52,6 +52,12 @@ func main() {
 				Aliases:     []string{"t"},
 				Destination: &cliArgs.Trie,
 			},
+			&cli.StringFlag{
+				Name:        "file",
+				Usage:       "input file",
+				Aliases:     []string{"f"},
+				Destination: &cliArgs.InputFile,
+			},
 		},
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
 			// {
