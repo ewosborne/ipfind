@@ -160,8 +160,18 @@ func ipcmd(args cliArgStruct) error {
 		matchlist = longest_subnets[longest_subnet_seen]
 	}
 	fmt.Println("MATCHLIST")
+	trie := ipaddr.NewIPv4AddressTrie()
+
 	for _, m := range matchlist {
-		fmt.Println(m)
+		// maybe make the trie here?
+		if args.Trie {
+			trie.Add(m.addr.ToIPv4())
+		} else {
+			fmt.Println(m)
+		}
+	}
+	if args.Trie {
+		fmt.Println("TRIE", trie)
 	}
 	return nil
 }
