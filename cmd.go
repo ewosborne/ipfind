@@ -15,7 +15,6 @@ import (
 	"log/slog"
 	"os"
 	"regexp"
-	"slices"
 	"strings"
 
 	"github.com/seancfoley/ipaddress-go/ipaddr"
@@ -110,7 +109,7 @@ func ipcmd(args cliArgStruct) error {
 	// ok now do things
 
 	var idx int = 0
-	// TODO DualIPv4v6AssociativeTries
+	// TODO DualIPv4v6AssociativeTries but maybe it sucks?
 	v4_trie := ipaddr.NewIPv4AddressAssociativeTrie()
 	v6_trie := ipaddr.NewIPv6AddressAssociativeTrie()
 
@@ -133,14 +132,9 @@ func ipcmd(args cliArgStruct) error {
 		slog.Debug("placeholder", "len", len(v4_matches))
 		//fmt.Printf("v4 matches%v\n", v4_matches)
 
-		/* TODO v6 regexp is all messed up and turns 4.218.236.160/30 into v6 matches [0.0.0.218 0.0.0.236 0.0.0.160/30]
-		v6_matches := get_ipv6_addresses_from_line(line)
-		fmt.Printf("v6 matches %v\n\n", v6_matches)
-		*/
-
-		/* TODO: maybe combine v4_matches and v6_matches? */
 		// matches := append(v4_matches, v6_matches...)
-		matches := slices.Concat(v4_matches, v6_matches)
+		// matches := slices.Concat(v4_matches, v6_matches)
+		matches := append(v4_matches, v6_matches...)
 		if len(matches) == 0 {
 			continue
 		}
@@ -172,6 +166,11 @@ func ipcmd(args cliArgStruct) error {
 			switch {
 			case len(args.Ipstring) == 0: // no target IP address, just populate trie
 				// trie.Add(match.ToIPv4()) // TODO: need to handle ipv6 here
+				if match.IsIPv4() {
+					v4_trie.Add(match.ToIPv4()) // TODO handle ipv6
+				} else if match.IsIPv6() {
+					v6_trie.Add(match.ToIPv6())
+				}
 				continue // stop looking
 
 			case args.Exact:
