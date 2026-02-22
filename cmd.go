@@ -16,6 +16,16 @@ var (
 	//afArgs    afArgsStruct
 )
 
+type foundmatch struct {
+	idx  int
+	addr *ipaddr.IPAddress
+	line string
+}
+
+func (f foundmatch) String() string {
+	return fmt.Sprintf("fm idx: %v  addr:%v  line(%v)", f.idx, f.addr, f.line)
+}
+
 func get_input_scanner(args cliArgStruct) *bufio.Scanner {
 	if len(args.InputFile) > 0 {
 		file, _ := os.Open(args.InputFile)
@@ -74,11 +84,13 @@ func getHostbits(match *ipaddr.IPAddress) int {
 func ipcmd(args cliArgStruct) error {
 	slog.Debug("ipcmd", "args", args)
 
+	var matchlist []foundmatch
+
 	// ok now do things
 
 	var idx int = 0
 	var longest_subnet_seen int
-	longest_subnets := make(map[int][]*ipaddr.IPAddress)
+	longest_subnets := make(map[int][]foundmatch)
 	scanner := get_input_scanner(args)
 
 	for scanner.Scan() {
@@ -113,15 +125,17 @@ func ipcmd(args cliArgStruct) error {
 			switch {
 			case args.Exact:
 				if args.Ipaddr.Equal(match) {
-					fmt.Println("FOUND MATCH", match.String(), args.Ipaddr.String(), idx, line)
+					//fmt.Println("FOUND MATCH", match.String(), args.Ipaddr.String(), idx, line)
 					// TODO now what? need a consistent output format.
+					matchlist = append(matchlist, foundmatch{idx: idx, addr: match, line: line})
 				}
 
 			case args.Subnet:
 				if match.Contains(args.Ipaddr) {
-					fmt.Println("CONTAINS", match.String(), args.Ipaddr.String(), idx, line)
+					slog.Debug("CONTAINS", "match", match.String(), "args", args.Ipaddr.String(), "idx", idx, "line", line)
 					// TODO now what?
 					//  * add to some list of matches?  track both line and address?  TBD.
+					matchlist = append(matchlist, foundmatch{idx: idx, addr: match, line: line})
 
 				}
 			case args.Longest:
@@ -131,7 +145,7 @@ func ipcmd(args cliArgStruct) error {
 					longest_subnet_seen = max(plen, longest_subnet_seen)
 
 					//fmt.Println("LM plen", match, plen)
-					longest_subnets[plen] = append(longest_subnets[plen], match) // TODO
+					longest_subnets[plen] = append(longest_subnets[plen], foundmatch{idx: idx, addr: match, line: line}) // TODO
 				}
 
 			case args.Trie:
@@ -143,8 +157,11 @@ func ipcmd(args cliArgStruct) error {
 
 	// deal with args.Longest second pass here
 	if args.Longest {
-		fmt.Println("LSS", longest_subnet_seen)
-		fmt.Println("args.longest second pass", longest_subnets[longest_subnet_seen])
+		matchlist = longest_subnets[longest_subnet_seen]
+	}
+	fmt.Println("MATCHLIST")
+	for _, m := range matchlist {
+		fmt.Println(m)
 	}
 	return nil
 }
