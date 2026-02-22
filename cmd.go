@@ -159,7 +159,7 @@ func ipcmd(args cliArgStruct) error {
 	if args.Longest {
 		matchlist = longest_subnets[longest_subnet_seen]
 	}
-	fmt.Println("MATCHLIST")
+	//fmt.Println("MATCHLIST")
 	trie := ipaddr.NewIPv4AddressTrie()
 
 	for _, m := range matchlist {
@@ -171,7 +171,7 @@ func ipcmd(args cliArgStruct) error {
 		}
 	}
 	if args.Trie {
-		fmt.Println("TRIE", trie)
+		fmt.Println(trie)
 	}
 	return nil
 }

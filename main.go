@@ -46,6 +46,12 @@ func main() {
 				Usage:       "print debug output",
 				Destination: &cliArgs.Debug,
 			},
+			&cli.BoolFlag{
+				Name:        "trie",
+				Usage:       "print trie",
+				Aliases:     []string{"t"},
+				Destination: &cliArgs.Trie,
+			},
 		},
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
 			// {
@@ -90,14 +96,6 @@ func main() {
 							Usage:       "subnet match",
 							Aliases:     []string{"s"},
 							Destination: &cliArgs.Subnet,
-						},
-					},
-					{
-						&cli.BoolFlag{
-							Name:        "trie",
-							Usage:       "print trie",
-							Aliases:     []string{"t"},
-							Destination: &cliArgs.Trie,
 						},
 					},
 				}, // Flags:
