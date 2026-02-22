@@ -98,6 +98,8 @@ func ipcmd(args cliArgStruct) error {
 	// ok now do things
 
 	var idx int = 0
+	trie := ipaddr.NewIPv4AddressAssociativeTrie()
+
 	var longest_subnet_seen int
 	longest_subnets := make(map[int][]foundmatch)
 	scanner := get_input_scanner(args)
@@ -107,6 +109,7 @@ func ipcmd(args cliArgStruct) error {
 		idx++
 
 		line := scanner.Text()
+
 		slog.Debug("scanned:", "idx", idx, "line", line)
 
 		//fmt.Printf("\nline %v\n", line)
@@ -122,6 +125,9 @@ func ipcmd(args cliArgStruct) error {
 		/* TODO: maybe combine v4_matches and v6_matches? */
 		// matches := append(v4_matches, v6_matches...)
 		matches := v4_matches
+		if len(matches) == 0 {
+			continue
+		}
 
 		/*
 			OK now I have v4 matches
@@ -130,6 +136,13 @@ func ipcmd(args cliArgStruct) error {
 
 		for _, match := range matches {
 			slog.Debug("comparing", "a", args.Ipaddr.String(), "b", match.String())
+
+			// just slop it all into a trie
+
+			// .Put() adds the foundmatch struct along with the prefix.
+			//  not sure which I want yet.
+			//trie.Put(match.ToIPv4(), foundmatch{idx: idx, addr: match, line: line})
+			trie.Add(match.ToIPv4())
 
 			switch {
 			case args.Exact:
@@ -169,7 +182,6 @@ func ipcmd(args cliArgStruct) error {
 		matchlist = longest_subnets[longest_subnet_seen]
 	}
 	//fmt.Println("MATCHLIST")
-	trie := ipaddr.NewIPv4AddressTrie()
 
 	for _, m := range matchlist {
 		// maybe make the trie here?
