@@ -7,14 +7,16 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/seancfoley/ipaddress-go/ipaddr"
 	"github.com/urfave/cli/v3"
 )
 
 type cliArgStruct struct {
-	Ipaddr                               string
+	Ipstring                             string
 	Exact, Longest, Subnet, Trie, V4, V6 bool
 	InputFile                            string
 	Debug                                bool
+	Ipaddr                               *ipaddr.IPAddress
 }
 
 func main() {
@@ -34,7 +36,7 @@ func main() {
 		Arguments: []cli.Argument{
 			&cli.StringArg{
 				Name:        "ip",
-				Destination: &cliArgs.Ipaddr,
+				Destination: &cliArgs.Ipstring,
 			},
 		},
 		Flags: []cli.Flag{
@@ -117,7 +119,13 @@ func main() {
 			logger := slog.New(handler)
 			slog.SetDefault(logger)
 
+			// Longest is default if the other two aren't set
 			cliArgs.Longest = !(cliArgs.Exact || cliArgs.Subnet)
+
+			// turn target IP into address object
+			cliArgs.Ipaddr = ipaddr.NewIPAddressString(cliArgs.Ipstring).GetAddress()
+
+			// run the command
 			return ipcmd(cliArgs)
 		},
 	}
