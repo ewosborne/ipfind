@@ -2,11 +2,8 @@ package main
 
 /*
 	TODO
-	handle -t with no specified ip address
 	clean up output
 	handle line vs network print match
-	ipv6 support, need better regexp or a different approach
-
 */
 
 import (
@@ -23,10 +20,7 @@ import (
 
 var (
 	ipv4Regex = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?)`)
-	//ipv6Regex = regexp.MustCompile(`[^0-9a-fA-F]*([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)[^0-9a-fA-F]*`)
 	ipv6Regex = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)
-
-	//afArgs    afArgsStruct
 )
 
 type foundmatch struct {
@@ -97,6 +91,7 @@ func getHostbits(match *ipaddr.IPAddress) int {
 	}
 	return plen
 }
+
 func ipcmd(args cliArgStruct) error {
 	slog.Debug("ipcmd", "args", args)
 
@@ -148,7 +143,6 @@ func ipcmd(args cliArgStruct) error {
 
 			// if I have no target IP just dump it all into a trie and continue
 			if len(args.Ipstring) == 0 {
-				// 	trie.Add(match.ToIPv4())
 				if match.IsIPv4() {
 					v4_trie.Add(match.ToIPv4())
 				} else if match.IsIPv6() {
@@ -194,7 +188,7 @@ func ipcmd(args cliArgStruct) error {
 				}
 
 			case args.Trie:
-				fmt.Println("TODO trie")
+				fmt.Println("TODO trie") // maybe there's nothing to do here?
 
 			}
 		}
