@@ -3,171 +3,89 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"regexp"
 
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
 
-type afArgsStruct struct {
-	targetAF     ipaddr.IPVersion // I don't use this but maybe will later
-	targetAFBits int
-	ipRE         *regexp.Regexp
-}
-
 var (
 	ipv4Regex = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?)`)
 	ipv6Regex = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)
-	afArgs    afArgsStruct
+	//afArgs    afArgsStruct
 )
 
 func get_input_scanner(args cliArgStruct) *bufio.Scanner {
-	if len(args.inputFile) > 0 {
-		file, _ := os.Open(args.inputFile)
+	if len(args.InputFile) > 0 {
+		file, _ := os.Open(args.InputFile)
 		return bufio.NewScanner(file)
 	} else {
 		return bufio.NewScanner(os.Stdin)
 	}
 }
 
-func ipcmd(args cliArgStruct) {
+func get_ip_addresses_from_line(ipre *regexp.Regexp, line string) []*ipaddr.IPAddress {
+	ret := []*ipaddr.IPAddress{}
+	ipStrings := ipre.FindAllString(line, -1)
+	if ipStrings == nil { // no matches
+		return nil
+	}
+	slog.Debug("FindAllString", "v4", ipStrings)
 
-	longestCache := make(map[int][]string)
-	var outputData []string
+	for _, ipString := range ipStrings {
+		slog.Debug("before", "addrString", ipString)
+		converted := ipaddr.NewIPAddressString(ipString).GetAddress()
+		slog.Debug("after", "converted", converted.String())
+		if converted != nil { // no successful conversions, matches must have been bogus
+			ret = append(ret, converted)
+		}
 
-	if args.debug {
-		log.Printf("args in ipcmd:%+v\n", args)
 	}
 
-	targetIPAddr := ipaddr.NewIPAddressString(args.ipaddr).GetHostAddress()
-
-	switch {
-	case targetIPAddr.IsIPv4():
-		afArgs = afArgsStruct{
-			targetAFBits: ipaddr.IPv4BitCount,
-			targetAF:     ipaddr.IPv4,
-			ipRE:         ipv4Regex,
-		}
-	case targetIPAddr.IsIPv6():
-		afArgs = afArgsStruct{
-			targetAFBits: ipaddr.IPv6BitCount,
-			targetAF:     ipaddr.IPv6,
-			ipRE:         ipv6Regex,
-		}
-	default:
-		log.Fatalf("couldn't figure out address family for %v\n", args.ipaddr)
+	if len(ret) == 0 { // not sure if this ever gets triggered
+		return nil
+	} else {
+		return ret
 	}
+}
+
+func get_ipv4_addresses_from_line(line string) []*ipaddr.IPAddress {
+	return get_ip_addresses_from_line(ipv4Regex, line)
+}
+
+/* TODO regex is messy, see below */
+// func get_ipv6_addresses_from_line(line string) []*ipaddr.IPAddress {
+// 	return get_ip_addresses_from_line(ipv6Regex, line)
+// }
+
+func ipcmd(args cliArgStruct) error {
+	slog.Debug("ipcmd", "args", args)
+
+	// ok now do things
 
 	scanner := get_input_scanner(args)
 
-	// NOTES
-
-	// read in a line
-	// parse the line to []matches
-	// if we're looking for exact, that's easy.  just walk matches, check for Equal().  print network or line.
-
 	for scanner.Scan() {
+		// get line from scanner
+
 		line := scanner.Text()
-		if args.debug {
-			log.Printf("SCANNED |%v|\n", line)
-		}
-		ipaddrs := afArgs.ipRE.FindAllString(line, -1)
-		if ipaddrs == nil { // this line has no ip addresses at all
-			continue
-		}
+		slog.Debug("scanned:", "line", line)
 
-	Outer:
-		for _, ip := range ipaddrs {
+		fmt.Printf("\nline %v\n", line)
+		v4_matches := get_ipv4_addresses_from_line(line)
+		fmt.Printf("v4 matches%v\n", v4_matches)
 
-			switch {
-			case args.exact:
-				// check each ipaddr to see if it's an exact match for what we're looking for
-				ipobj := ipaddr.NewIPAddressString(ip).GetHostAddress()
-				if ipobj.Equal(targetIPAddr) {
-					switch args.networkOnly {
-					case true:
-						//fmt.Printf("%v\n", targetIPAddr)
-						outputData = append(outputData, targetIPAddr.String())
-					case false:
-						//fmt.Printf("%v\n", line)
-						outputData = append(outputData, line)
+		/* TODO v6 regexp is all messed up and turns 4.218.236.160/30 into v6 matches [0.0.0.218 0.0.0.236 0.0.0.160/30]
+		v6_matches := get_ipv6_addresses_from_line(line)
+		fmt.Printf("v6 matches %v\n\n", v6_matches)
+		*/
 
-					}
-					break Outer // go scan next line
-				} // ipob.Equal()
-			case args.subnet, args.longest:
-				/*
-					the only difference between args.subnet and args.longest is that longest has a post-process.
-					if args.subnet - just like args.exact except it's Contains() instead of Equal()
-					if args.longest - just like args.subnet except we save the item in a map instead of printing it.
-				*/
-
-				ipobj := ipaddr.NewIPAddressString(ip).GetAddress()
-				if args.debug {
-					fmt.Printf("IPOBJ |%v|\n", ipobj)
-				}
-				//if ipobj.Contains(targetIPAddr) || ipobj.Equal(targetIPAddr) {
-				if ipobj.Contains(targetIPAddr) {
-					switch {
-					case args.subnet:
-						switch args.networkOnly {
-						case true:
-							//fmt.Printf("%v\n", ipobj)
-							outputData = append(outputData, ipobj.String())
-
-						case false:
-							//fmt.Printf("%v\n", line)
-							outputData = append(outputData, line)
-
-						}
-					case args.longest:
-						// get ip mask
-						var maskLength int
-						a := ipobj.GetPrefixLen()
-						if a == nil {
-							// raw host gets nil prefix len rather than 32 or 128.  no idea why.
-							maskLength = afArgs.targetAFBits
-						} else {
-							maskLength = a.Len()
-						}
-
-						//fmt.Printf("for %v len is %v\n", ipobj, maskLength)
-
-						switch args.networkOnly {
-						case true:
-							//fmt.Printf("%v\n", targetIPAddr)
-							longestCache[maskLength] = append(longestCache[maskLength], ipobj.String())
-						case false:
-							//fmt.Printf("%v\n", line)
-							longestCache[maskLength] = append(longestCache[maskLength], line)
-
-						}
-					} // outer switch
-				}
-			} // case args.subnet, args.longest
-		}
-	} // for scanner.Scan()
-
-	if args.longest {
-		// find longest mask seen
-		var longestMask int
-		for key := range longestCache {
-			longestMask = max(longestMask, key)
-		}
-
-		if args.debug {
-			fmt.Printf("longest seen |%v|\n", longestMask)
-		}
-		outputData = longestCache[longestMask]
+		/*
+			OK now I have v4 matches
+			do the -e, -s, -l, -t stuff
+		*/
 	}
 
-	for _, item := range outputData {
-		if args.debug {
-			fmt.Printf("\t(%[1]T) %[1]v\n", item)
-		} else {
-			fmt.Printf("\t%v\n", item)
-
-		}
-	}
-} // ipcmd
+	return nil
+}

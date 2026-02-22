@@ -4,17 +4,17 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 
 	"github.com/urfave/cli/v3"
 )
 
 type cliArgStruct struct {
-	ipaddr                 string
-	exact, longest, subnet bool
-	inputFile              string
-	networkOnly            bool
-	debug                  bool
+	Ipaddr                               string
+	Exact, Longest, Subnet, Trie, V4, V6 bool
+	InputFile                            string
+	Debug                                bool
 }
 
 func main() {
@@ -25,18 +25,16 @@ func main() {
 		fmt.Printf("version=%s\n", cmd.Root().Version)
 	}
 	app := &cli.Command{
-		Version:                "0.0.1",
+		Version:                "0.0.2",
 		UseShortOptionHandling: true,
 		EnableShellCompletion:  true,
+		Name:                   "ipfind",
+		Usage:                  "find this ip",
 
 		Arguments: []cli.Argument{
 			&cli.StringArg{
 				Name:        "ip",
-				Destination: &cliArgs.ipaddr,
-			},
-			&cli.StringArg{
-				Name:        "filename",
-				Destination: &cliArgs.inputFile,
+				Destination: &cliArgs.Ipaddr,
 			},
 		},
 		Flags: []cli.Flag{
@@ -44,17 +42,28 @@ func main() {
 				Name:        "debug",
 				Aliases:     []string{"d"},
 				Usage:       "print debug output",
-				Destination: &cliArgs.debug,
-			},
-			&cli.BoolFlag{
-				Name:        "network-only",
-				Aliases:     []string{"n"},
-				Value:       false,
-				Usage:       "show only matched networks, not the entire line",
-				Destination: &cliArgs.networkOnly,
+				Destination: &cliArgs.Debug,
 			},
 		},
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
+			// {
+			// 	Flags: [][]cli.Flag{
+			// 		{
+			// 			&cli.BoolFlag{
+			// 				Name:        "v4",
+			// 				Usage:       "force ipv4",
+			// 				Destination: &cliArgs.V4,
+			// 			},
+			// 		},
+			// 		{
+			// 			&cli.BoolFlag{
+			// 				Name:        "v6",
+			// 				Usage:       "force ipv6",
+			// 				Destination: &cliArgs.V6,
+			// 			},
+			// 		},
+			// 	},
+			// },
 			{
 				Flags: [][]cli.Flag{
 					{
@@ -62,7 +71,7 @@ func main() {
 							Name:        "exact",
 							Usage:       "exact match",
 							Aliases:     []string{"e"},
-							Destination: &cliArgs.exact,
+							Destination: &cliArgs.Exact,
 						},
 					},
 					{
@@ -70,7 +79,7 @@ func main() {
 							Name:        "longest",
 							Usage:       "longest match",
 							Aliases:     []string{"l"},
-							Destination: &cliArgs.longest,
+							Destination: &cliArgs.Longest,
 						},
 					},
 					{
@@ -78,22 +87,38 @@ func main() {
 							Name:        "subnet",
 							Usage:       "subnet match",
 							Aliases:     []string{"s"},
-							Destination: &cliArgs.subnet,
+							Destination: &cliArgs.Subnet,
+						},
+					},
+					{
+						&cli.BoolFlag{
+							Name:        "trie",
+							Usage:       "print trie",
+							Aliases:     []string{"t"},
+							Destination: &cliArgs.Trie,
 						},
 					},
 				}, // Flags:
 			},
 		}, // MutuallyExclusiveFlags:
-
-		Name:  "ipfind",
-		Usage: "find this ip",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
+			// Set up the logger based on the debug flag
+			var logLevel slog.Level
+			if cmd.Bool("debug") {
+				logLevel = slog.LevelDebug
+			} else {
+				logLevel = slog.LevelInfo
+			}
 
-			// set longest if neither of the other are set
-			cliArgs.longest = !(cliArgs.exact || cliArgs.subnet)
+			// Create a handler with the appropriate level
+			handler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+				Level: logLevel,
+			})
+			logger := slog.New(handler)
+			slog.SetDefault(logger)
 
-			ipcmd(cliArgs)
-			return nil
+			cliArgs.Longest = !(cliArgs.Exact || cliArgs.Subnet)
+			return ipcmd(cliArgs)
 		},
 	}
 
