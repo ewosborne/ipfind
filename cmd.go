@@ -100,24 +100,19 @@ func ipcmd(args cliArgStruct) error {
 			switch {
 			case args.Exact:
 				if args.Ipaddr.Equal(match) {
-					slog.Debug("FOUND MATCH", match.String(), args.Ipaddr.String())
-					//fmt.Println("FOUND MATCH", match.String(), args.Ipaddr.String(), idx, line)
-
+					fmt.Println("FOUND MATCH", match.String(), args.Ipaddr.String(), idx, line)
 					// TODO now what?
 				}
 
 			case args.Subnet:
 				if match.Contains(args.Ipaddr) {
-					//slog.Debug("CONTAINS", match.String(), args.Ipaddr.String(), idx, line)
 					fmt.Println("CONTAINS", match.String(), args.Ipaddr.String(), idx, line)
-
 					// TODO now what?
 
 				}
-				//fmt.Println("TODO subnet match")
-
 			case args.Longest:
 				fmt.Println("TODO longest match")
+				// just like Subnet but I need to track the longest match
 
 			case args.Trie:
 				fmt.Println("TODO trie")
