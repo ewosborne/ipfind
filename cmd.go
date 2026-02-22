@@ -1,5 +1,14 @@
 package main
 
+/*
+	TODO
+	handle -t with no specified ip address
+	clean up output
+	handle line vs network print match
+	ipv6 support, need better regexp or a different approach
+
+*/
+
 import (
 	"bufio"
 	"fmt"
