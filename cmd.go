@@ -158,7 +158,6 @@ func ipcmd(args cliArgStruct) error {
 			case args.Exact:
 				if args.Ipaddr.Equal(match) {
 					slog.Debug("FOUND MATCH", "match", match.String(), "ipaddr", args.Ipaddr.String(), "idx", idx, "line", line)
-					// TODO now what? need a consistent output format.
 					matchlist = append(matchlist, foundmatch{Idx: idx, Addr: match, Line: line})
 				}
 
@@ -168,8 +167,6 @@ func ipcmd(args cliArgStruct) error {
 						"match", match.String(),
 						"args", args.Ipaddr.String(),
 						"idx", idx, "line", line)
-					// TODO now what?
-					//  * add to some list of matches?  track both line and address?  TBD.
 					matchlist = append(matchlist, foundmatch{Idx: idx, Addr: match, Line: line})
 
 				}
@@ -178,20 +175,12 @@ func ipcmd(args cliArgStruct) error {
 				if match.Contains(args.Ipaddr) {
 					plen := getHostbits(match)
 					longest_subnet_seen = max(plen, longest_subnet_seen)
+					matchlist = longest_subnets[longest_subnet_seen]
 
 					longest_subnets[plen] = append(longest_subnets[plen], foundmatch{Idx: idx, Addr: match, Line: line}) // TODO
 				}
-
-			case args.Trie:
-				fmt.Println("TODO trie") // maybe there's nothing to do here?
-
 			}
-		}
-	}
-
-	// deal with args.Longest second pass here
-	if args.Longest {
-		matchlist = longest_subnets[longest_subnet_seen]
+		} // for _, m := range matches
 	}
 
 	// now finish it off
