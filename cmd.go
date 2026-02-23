@@ -24,13 +24,18 @@ var (
 )
 
 type foundmatch struct {
-	idx  int
-	addr *ipaddr.IPAddress
-	line string
+	Idx  int
+	Addr *ipaddr.IPAddress
+	Line string
+}
+
+type templateData struct {
+	PrintIdx bool
+	Items    []foundmatch
 }
 
 func (f foundmatch) String() string {
-	return fmt.Sprintf("fm idx: %v  addr:%v  line(%v)", f.idx, f.addr, f.line)
+	return fmt.Sprintf("fm idx: %v  addr:%v  line(%v)", f.Idx, f.Addr, f.Line)
 }
 
 func get_input_scanner(args cliArgStruct) *bufio.Scanner {
@@ -141,16 +146,6 @@ func ipcmd(args cliArgStruct) error {
 			//  not sure which I want yet.
 			//trie.Put(match.ToIPv4(), foundmatch{idx: idx, addr: match, line: line})
 
-			// if I have no target IP just dump it all into a trie and continue
-			if len(args.Ipstring) == 0 {
-				if match.IsIPv4() {
-					v4_trie.Add(match.ToIPv4())
-				} else if match.IsIPv6() {
-					v6_trie.Add(match.ToIPv6())
-				}
-				continue
-			}
-
 			switch {
 			case len(args.Ipstring) == 0: // no target IP address, just populate trie
 				if match.IsIPv4() {
@@ -164,7 +159,7 @@ func ipcmd(args cliArgStruct) error {
 				if args.Ipaddr.Equal(match) {
 					slog.Debug("FOUND MATCH", "match", match.String(), "ipaddr", args.Ipaddr.String(), "idx", idx, "line", line)
 					// TODO now what? need a consistent output format.
-					matchlist = append(matchlist, foundmatch{idx: idx, addr: match, line: line})
+					matchlist = append(matchlist, foundmatch{Idx: idx, Addr: match, Line: line})
 				}
 
 			case args.Subnet:
@@ -175,7 +170,7 @@ func ipcmd(args cliArgStruct) error {
 						"idx", idx, "line", line)
 					// TODO now what?
 					//  * add to some list of matches?  track both line and address?  TBD.
-					matchlist = append(matchlist, foundmatch{idx: idx, addr: match, line: line})
+					matchlist = append(matchlist, foundmatch{Idx: idx, Addr: match, Line: line})
 
 				}
 			case args.Longest:
@@ -184,7 +179,7 @@ func ipcmd(args cliArgStruct) error {
 					plen := getHostbits(match)
 					longest_subnet_seen = max(plen, longest_subnet_seen)
 
-					longest_subnets[plen] = append(longest_subnets[plen], foundmatch{idx: idx, addr: match, line: line}) // TODO
+					longest_subnets[plen] = append(longest_subnets[plen], foundmatch{Idx: idx, Addr: match, Line: line}) // TODO
 				}
 
 			case args.Trie:
@@ -199,24 +194,32 @@ func ipcmd(args cliArgStruct) error {
 		matchlist = longest_subnets[longest_subnet_seen]
 	}
 
+	// now finish it off
 	for _, m := range matchlist {
+
 		if args.Trie {
-			if m.addr.IsIPv4() {
-				v4_trie.Add(m.addr.ToIPv4())
-			} else if m.addr.IsIPv6() {
-				v6_trie.Add(m.addr.ToIPv6())
+			if m.Addr.IsIPv4() {
+				//v4_trie.Add(m.addr.ToIPv4())
+				v4_trie.Put(m.Addr.ToIPv4(), m)
+
+			} else if m.Addr.IsIPv6() {
+				//v6_trie.Add(m.addr.ToIPv6())
+				v6_trie.Put(m.Addr.ToIPv6(), m)
+				//trie.Put(match.ToIPv4(), foundmatch{idx: idx, addr: match, line: line})
 			}
-		} else {
-			fmt.Println(m)
 		}
 	}
+
 	if args.Trie {
 		if v4_trie.Size() > 0 {
 			fmt.Println(v4_trie)
 		}
 		if v6_trie.Size() > 0 {
-
 			fmt.Println(v6_trie)
+		}
+	} else {
+		for _, m := range matchlist {
+			fmt.Printf("%v %v (%v)\n", m.Idx, m.Addr, m.Line)
 		}
 	}
 	return nil

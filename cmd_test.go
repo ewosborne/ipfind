@@ -90,7 +90,7 @@ func TestFoundmatchString_TableDriven(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			a := ipaddr.NewIPAddressString(tc.addr).GetAddress()
-			fm := foundmatch{idx: tc.idx, addr: a, line: tc.line}
+			fm := foundmatch{Idx: tc.idx, Addr: a, Line: tc.line}
 			s := fm.String()
 			if !strings.Contains(s, fmt.Sprintf("idx: %d", tc.idx)) || !strings.Contains(s, "line("+tc.line+")") {
 				t.Fatalf("unexpected foundmatch string: %s", s)
