@@ -195,9 +195,10 @@ func ipcmd(args cliArgStruct) error {
 	}
 
 	// now finish it off
-	for _, m := range matchlist {
+	if args.Trie {
 
-		if args.Trie {
+		// populate tries
+		for _, m := range matchlist {
 			if m.Addr.IsIPv4() {
 				//v4_trie.Add(m.addr.ToIPv4())
 				v4_trie.Put(m.Addr.ToIPv4(), m)
@@ -208,16 +209,16 @@ func ipcmd(args cliArgStruct) error {
 				//trie.Put(match.ToIPv4(), foundmatch{idx: idx, addr: match, line: line})
 			}
 		}
-	}
 
-	if args.Trie {
+		// print tries
 		if v4_trie.Size() > 0 {
 			fmt.Println(v4_trie)
 		}
 		if v6_trie.Size() > 0 {
 			fmt.Println(v6_trie)
 		}
-	} else {
+
+	} else { // not trie, just print matchlist
 		for _, m := range matchlist {
 			fmt.Printf("%v %v (%v)\n", m.Idx, m.Addr, m.Line)
 		}
