@@ -134,7 +134,9 @@ func process_single_file(args cliArgStruct, file inputFile) {
 
 		if args.V4 {
 			v4_line_matches = get_ipv4_addresses_from_line(line)
-		} else if args.V6 {
+		}
+
+		if args.V6 {
 			v6_line_matches = get_ipv6_addresses_from_line(line)
 		}
 
@@ -159,7 +161,7 @@ func process_single_file(args cliArgStruct, file inputFile) {
 				if args.Ipaddr.Equal(line_match) {
 					foundMatchingIP = true
 					matchingIPList = append(matchingIPList, line_match)
-					//fmt.Println("EXACT MATCH", line_match)
+					slog.Debug("E-MATCH", "EXACT MATCH", line_match.String())
 				}
 				// OK do I save the matches somewhere?
 				// need to save both line and prefix, or maybe just pick between them
@@ -167,15 +169,15 @@ func process_single_file(args cliArgStruct, file inputFile) {
 				if args.Ipaddr.Contains(line_match) {
 					foundMatchingIP = true
 					matchingIPList = append(matchingIPList, line_match)
-
+					slog.Debug("C-MATCH", "ARG", args.Ipaddr.String(), "CONTAINS", line_match.String())
 					//fmt.Println("ARG", args.Ipaddr, "CONTAINS", line_match)
 				}
 			case args.Subnet:
 				if line_match.Contains(args.Ipaddr) {
 					foundMatchingIP = true
 					matchingIPList = append(matchingIPList, line_match)
-
-					//fmt.Println(line_match, "CONTAINS ARG", args.Ipaddr)
+					slog.Debug("S-MATCH", "ARG", line_match.String(), "CONTAINS", args.Ipaddr.String())
+					fmt.Println(line_match, "CONTAINS ARG", args.Ipaddr) // wtf 1.2.3.0/24 CONTAINS ARG 1.2.3.0/18  ipfind -f data/other-sample.txt 1.2.3.0/18 -ds
 
 				}
 			case args.Longest:
@@ -209,7 +211,7 @@ func process_single_file(args cliArgStruct, file inputFile) {
 }
 
 func getHostbits(match *ipaddr.IPAddress) int {
-	plen := match.GetPrefixLen().Len() // grr if there's no explicit /mask it's 0 not 32 or 128.  wtf.
+	plen := match.GetPrefixLen().Len() // grr if there's no explicit /mask it's 0 not 32 or 128.  wtf. but i can use this to distinguish 1.2.3.4 from 1.2.3.4/32, which might be useful.
 	if plen == 0 {
 		plen = match.GetBitCount()
 	}
@@ -243,7 +245,7 @@ func ipcmd(args cliArgStruct) error {
 
 	// walk stuff
 	for _, i := range iFiles {
-		fmt.Printf("need to process file %v\n", i.Filename)
+		//fmt.Printf("need to process file %v\n", i.Filename)
 		// launch a goroutine per file maybe?  for now just do it in order
 		process_single_file(args, i)
 	}
