@@ -20,7 +20,6 @@ import (
 	"bufio"
 	"fmt"
 	"io/fs"
-	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -36,13 +35,12 @@ var (
 	ipv6Regex = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)
 )
 
-func getFilesFromArgs(inputFiles []string) []string {
+func getFilesFromArgs(inputFiles []string) ([]string, error) {
 	var ret []string
 	for _, ifile := range inputFiles {
 		err := filepath.WalkDir(ifile, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
-				fmt.Println("error", err)
-				os.Exit(1)
+				return err
 			}
 
 			if !d.IsDir() {
@@ -51,11 +49,10 @@ func getFilesFromArgs(inputFiles []string) []string {
 			return nil
 		})
 		if err != nil {
-			log.Fatal("error", err)
+			return nil, err
 		}
 	}
-	return ret
-
+	return ret, nil
 }
 
 func get_ip_addresses_from_line(ipre *regexp.Regexp, line string) []*ipaddr.IPAddress {
@@ -231,7 +228,10 @@ func ipcmd(args cliArgStruct) error {
 	} else {
 		slog.Debug("ifiles are", "ifiles", args.InputFiles)
 		// InputFiles is a slice. each element in the slice is either a file or a directory name.
-		files := getFilesFromArgs(args.InputFiles)
+		files, err := getFilesFromArgs(args.InputFiles)
+		if err != nil {
+			return err
+		}
 
 		slices.Sort(files)
 
