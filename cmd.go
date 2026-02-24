@@ -4,13 +4,25 @@ package main
 	TODO
 	clean up output
 	handle line vs network print match
+
+	'contains' flag: pass 4.0.0.0/8 as an arg with -c/--contains, show me all subnets which this contains.
+
+
+	rewrite file handling in goroutines, or at least prep for that
+	   one goroutine per file (or if stdin, that's just one file)
+	   roll it all up into a per-file map at the top level
+
+	think about how this interacts with trie support
 */
 
 import (
 	"bufio"
 	"fmt"
+	"io/fs"
+	"log"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -23,28 +35,26 @@ var (
 	ipv6Regex = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)
 )
 
-type foundmatch struct {
-	Idx  int
-	Addr *ipaddr.IPAddress
-	Line string
-}
+func getFilesFromArgs(inputFiles []string) []string {
+	var ret []string
+	for _, ifile := range inputFiles {
+		err := filepath.WalkDir(ifile, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				fmt.Println("error", err)
+				os.Exit(1)
+			}
 
-type templateData struct {
-	PrintIdx bool
-	Items    []foundmatch
-}
-
-func (f foundmatch) String() string {
-	return fmt.Sprintf("fm idx: %v  addr:%v  line(%v)", f.Idx, f.Addr, f.Line)
-}
-
-func get_input_scanner(args cliArgStruct) *bufio.Scanner {
-	if len(args.InputFile) > 0 {
-		file, _ := os.Open(args.InputFile)
-		return bufio.NewScanner(file)
-	} else {
-		return bufio.NewScanner(os.Stdin)
+			if !d.IsDir() {
+				ret = append(ret, path)
+			}
+			return nil
+		})
+		if err != nil {
+			log.Fatal("error", err)
+		}
 	}
+	return ret
+
 }
 
 func get_ip_addresses_from_line(ipre *regexp.Regexp, line string) []*ipaddr.IPAddress {
@@ -89,6 +99,115 @@ func get_ipv6_addresses_from_line(line string) []*ipaddr.IPAddress {
 
 }
 
+type inputFile struct {
+	Filename string
+	IsStdin  bool
+	Scanner  *bufio.Scanner
+}
+
+type dataMatch struct {
+	Filename  string
+	Idx       int
+	MatchLine string
+	MatchIPs  []*ipaddr.IPAddress
+}
+
+func process_single_file(args cliArgStruct, file inputFile) {
+	// process a file
+	// return something?
+
+	var idx int = 0
+	var longest_subnet_seen = 0
+	var fileMatches = []dataMatch{}
+	var v4_line_matches = []*ipaddr.IPAddress{}
+	var v6_line_matches = []*ipaddr.IPAddress{}
+
+	scanner := file.Scanner
+
+	for scanner.Scan() {
+
+		var foundMatchingIP bool = false
+		var matchingIPList = []*ipaddr.IPAddress{}
+		idx++ // start counting at 1
+		line := scanner.Text()
+		slog.Debug("processed", "idx", idx, "line", line)
+
+		if args.V4 {
+			v4_line_matches = get_ipv4_addresses_from_line(line)
+		} else if args.V6 {
+			v6_line_matches = get_ipv6_addresses_from_line(line)
+		}
+
+		// note well that this is _regex matches_, not _criteria matches_.
+		line_matches := slices.Concat(v4_line_matches, v6_line_matches)
+		if len(line_matches) == 0 {
+			continue // no matches on this line
+		}
+
+		// ok now I have matches.
+		// maybe save everything here?
+		// save idx, filename, line, match info
+
+		// TODO: this isn't valid because I don't want to save fileMatches until I've done the case matching
+
+		// do -e, -s, -l, -c stuff.  trie to come later.
+
+		for _, line_match := range line_matches {
+			slog.Debug("comparing", "line", line_match.String())
+			switch {
+			case args.Exact:
+				if args.Ipaddr.Equal(line_match) {
+					foundMatchingIP = true
+					matchingIPList = append(matchingIPList, line_match)
+					//fmt.Println("EXACT MATCH", line_match)
+				}
+				// OK do I save the matches somewhere?
+				// need to save both line and prefix, or maybe just pick between them
+			case args.Contains:
+				if args.Ipaddr.Contains(line_match) {
+					foundMatchingIP = true
+					matchingIPList = append(matchingIPList, line_match)
+
+					//fmt.Println("ARG", args.Ipaddr, "CONTAINS", line_match)
+				}
+			case args.Subnet:
+				if line_match.Contains(args.Ipaddr) {
+					foundMatchingIP = true
+					matchingIPList = append(matchingIPList, line_match)
+
+					//fmt.Println(line_match, "CONTAINS ARG", args.Ipaddr)
+
+				}
+			case args.Longest:
+				//fmt.Println("TODO longest")
+				if line_match.Contains(args.Ipaddr) {
+					plen := getHostbits(line_match)
+					longest_subnet_seen = max(longest_subnet_seen, plen)
+					if plen == longest_subnet_seen {
+						fmt.Println(" LONGEST SO FAR", longest_subnet_seen, line_match)
+					}
+				}
+				// just run args.Subnet logic and remember the longest match seen
+				//  need to handle multiple matchesS
+			}
+			if foundMatchingIP {
+				m := dataMatch{Filename: file.Filename, Idx: idx, MatchLine: line, MatchIPs: matchingIPList}
+				fileMatches = append(fileMatches, m)
+			}
+		}
+		foundMatchingIP = false
+		matchingIPList = matchingIPList[:0] // clear the list out
+	}
+
+	// haven't done args.Longest yet
+	// but print matches
+	if len(fileMatches) > 0 {
+		for _, entry := range fileMatches {
+			fmt.Printf("file:%v idx:%v line:%v matches:%v\n", entry.Filename, entry.Idx, entry.MatchLine, entry.MatchIPs)
+		}
+	}
+}
+
 func getHostbits(match *ipaddr.IPAddress) int {
 	plen := match.GetPrefixLen().Len() // grr if there's no explicit /mask it's 0 not 32 or 128.  wtf.
 	if plen == 0 {
@@ -100,117 +219,34 @@ func getHostbits(match *ipaddr.IPAddress) int {
 func ipcmd(args cliArgStruct) error {
 	slog.Debug("ipcmd", "args", args)
 
-	var matchlist []foundmatch
+	var iFiles = []inputFile{}
 
-	// ok now do things
+	// build list of files or stdin
+	// TODO: preserve filename here for later reporting.
+	if len(args.InputFiles) == 0 {
+		slog.Debug("reading from stdin")
+		iFiles = append(iFiles, inputFile{Filename: "os.Stdin", IsStdin: true, Scanner: bufio.NewScanner(os.Stdin)})
+	} else {
+		slog.Debug("ifiles are", "ifiles", args.InputFiles)
+		// InputFiles is a slice. each element in the slice is either a file or a directory name.
+		files := getFilesFromArgs(args.InputFiles)
 
-	var idx int = 0
-	// TODO DualIPv4v6AssociativeTries but maybe it sucks?
-	v4_trie := ipaddr.NewIPv4AddressAssociativeTrie()
-	v6_trie := ipaddr.NewIPv6AddressAssociativeTrie()
+		slices.Sort(files)
 
-	var longest_subnet_seen int
-	longest_subnets := make(map[int][]foundmatch)
-	scanner := get_input_scanner(args)
+		slog.Debug("files to walk are", "file", files)
+		for _, file := range files {
+			tmp, _ := os.Open(file)
+			iFiles = append(iFiles, inputFile{IsStdin: false, Filename: file, Scanner: bufio.NewScanner(tmp)})
 
-	for scanner.Scan() {
-		// get line from scanner and start counting at 1
-		idx++
-
-		line := scanner.Text()
-
-		slog.Debug("scanned:", "idx", idx, "line", line)
-
-		//fmt.Printf("\nline %v\n", line)
-		v4_matches := get_ipv4_addresses_from_line(line)
-		v6_matches := get_ipv6_addresses_from_line(line)
-
-		slog.Debug("placeholder", "len", len(v4_matches))
-		//fmt.Printf("v4 matches%v\n", v4_matches)
-
-		matches := slices.Concat(v4_matches, v6_matches)
-		if len(matches) == 0 {
-			continue
-		}
-
-		/*
-			OK now I have v4 matches
-			do the -e, -s, -l, -t stuff
-		*/
-
-		for _, match := range matches {
-			slog.Debug("comparing", "a", args.Ipaddr.String(), "b", match.String())
-
-			// just slop it all into a trie
-			// .Put() adds the foundmatch struct along with the prefix.
-			//  not sure which I want yet.
-			//trie.Put(match.ToIPv4(), foundmatch{idx: idx, addr: match, line: line})
-
-			switch {
-			case len(args.Ipstring) == 0: // no target IP address, just populate trie
-				if match.IsIPv4() {
-					v4_trie.Add(match.ToIPv4())
-				} else if match.IsIPv6() {
-					v6_trie.Add(match.ToIPv6())
-				}
-				continue // stop looking
-
-			case args.Exact:
-				if args.Ipaddr.Equal(match) {
-					slog.Debug("FOUND MATCH", "match", match.String(), "ipaddr", args.Ipaddr.String(), "idx", idx, "line", line)
-					matchlist = append(matchlist, foundmatch{Idx: idx, Addr: match, Line: line})
-				}
-
-			case args.Subnet:
-				if match.Contains(args.Ipaddr) {
-					slog.Debug("CONTAINS",
-						"match", match.String(),
-						"args", args.Ipaddr.String(),
-						"idx", idx, "line", line)
-					matchlist = append(matchlist, foundmatch{Idx: idx, Addr: match, Line: line})
-
-				}
-			case args.Longest:
-				// just like Subnet but I need to track the longest match
-				if match.Contains(args.Ipaddr) {
-					plen := getHostbits(match)
-					longest_subnet_seen = max(plen, longest_subnet_seen)
-					matchlist = longest_subnets[longest_subnet_seen]
-
-					longest_subnets[plen] = append(longest_subnets[plen], foundmatch{Idx: idx, Addr: match, Line: line}) // TODO
-				}
-			}
-		} // for _, m := range matches
-	}
-
-	// now finish it off
-	if args.Trie {
-
-		// populate tries
-		for _, m := range matchlist {
-			if m.Addr.IsIPv4() {
-				//v4_trie.Add(m.addr.ToIPv4())
-				v4_trie.Put(m.Addr.ToIPv4(), m)
-
-			} else if m.Addr.IsIPv6() {
-				//v6_trie.Add(m.addr.ToIPv6())
-				v6_trie.Put(m.Addr.ToIPv6(), m)
-				//trie.Put(match.ToIPv4(), foundmatch{idx: idx, addr: match, line: line})
-			}
-		}
-
-		// print tries
-		if v4_trie.Size() > 0 {
-			fmt.Println(v4_trie)
-		}
-		if v6_trie.Size() > 0 {
-			fmt.Println(v6_trie)
-		}
-
-	} else { // not trie, just print matchlist
-		for _, m := range matchlist {
-			fmt.Printf("%v %v (%v)\n", m.Idx, m.Addr, m.Line)
 		}
 	}
+
+	// walk stuff
+	for _, i := range iFiles {
+		fmt.Printf("need to process file %v\n", i.Filename)
+		// launch a goroutine per file maybe?  for now just do it in order
+		process_single_file(args, i)
+	}
+
 	return nil
-}
+} // func ipcmd

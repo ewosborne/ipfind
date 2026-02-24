@@ -12,11 +12,11 @@ import (
 )
 
 type cliArgStruct struct {
-	Ipstring                             string
-	Exact, Longest, Subnet, Trie, V4, V6 bool
-	InputFile                            string
-	Debug                                bool
-	Ipaddr                               *ipaddr.IPAddress
+	Ipstring                                       string
+	Exact, Longest, Subnet, Trie, V4, V6, Contains bool
+	InputFiles                                     []string
+	Debug                                          bool
+	Ipaddr                                         *ipaddr.IPAddress
 }
 
 func main() {
@@ -52,11 +52,11 @@ func main() {
 				Aliases:     []string{"t"},
 				Destination: &cliArgs.Trie,
 			},
-			&cli.StringFlag{
+			&cli.StringSliceFlag{
 				Name:        "file",
 				Usage:       "input file",
 				Aliases:     []string{"f"},
-				Destination: &cliArgs.InputFile,
+				Destination: &cliArgs.InputFiles,
 			},
 		},
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
@@ -104,6 +104,14 @@ func main() {
 							Destination: &cliArgs.Subnet,
 						},
 					},
+					{
+						&cli.BoolFlag{
+							Name:        "contains",
+							Usage:       "find all networks and hosts contained in the specified subnet",
+							Aliases:     []string{"c"},
+							Destination: &cliArgs.Contains,
+						},
+					},
 				}, // Flags:
 			},
 		}, // MutuallyExclusiveFlags:
@@ -128,6 +136,13 @@ func main() {
 
 			// turn target IP into address object
 			cliArgs.Ipaddr = ipaddr.NewIPAddressString(cliArgs.Ipstring).GetAddress()
+			if cliArgs.Ipaddr.IsIPv4() {
+				cliArgs.V4 = true
+				cliArgs.V6 = false
+			} else if cliArgs.Ipaddr.IsIPv6() {
+				cliArgs.V4 = false
+				cliArgs.V6 = true
+			}
 
 			// run the command
 			return ipcmd(cliArgs)
