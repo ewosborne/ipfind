@@ -10,6 +10,10 @@ package main
 	   roll it all up into a per-file map at the top level
 
 	think about how this interacts with trie support.  -ct, -st, -lt, -et vs. just -t.
+
+	learn how to use the debugger
+
+	get some solid tests cases in place
 */
 
 import (
