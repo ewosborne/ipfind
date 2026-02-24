@@ -3,16 +3,13 @@ package main
 /*
 	TODO
 	clean up output
-	handle line vs network print match
-
-	'contains' flag: pass 4.0.0.0/8 as an arg with -c/--contains, show me all subnets which this contains.
-
+	handle line vs network print match?
 
 	rewrite file handling in goroutines, or at least prep for that
 	   one goroutine per file (or if stdin, that's just one file)
 	   roll it all up into a per-file map at the top level
 
-	think about how this interacts with trie support
+	think about how this interacts with trie support.  -ct, -st, -lt, -et vs. just -t.
 */
 
 import (
@@ -75,11 +72,13 @@ func get_ip_addresses_from_line(ipre *regexp.Regexp, line string) []*ipaddr.IPAd
 
 	}
 
-	if len(ret) == 0 { // not sure if this ever gets triggered
-		return nil
-	} else {
-		return ret
-	}
+	// if len(ret) == 0 { // not sure if this ever gets triggered
+	// 	return nil
+	// } else {
+	// 	return ret
+	// }
+
+	return ret
 }
 
 func get_ipv4_addresses_from_line(line string) []*ipaddr.IPAddress {
@@ -117,7 +116,7 @@ func process_single_file(args cliArgStruct, file inputFile) {
 	// return something?
 
 	var idx int = 0
-	var longest_subnet_seen = 0
+	var v4_trie = ipaddr.IPv4AddressTrie{}
 	var fileMatches = []dataMatch{}
 	var v4_line_matches = []*ipaddr.IPAddress{}
 	var v6_line_matches = []*ipaddr.IPAddress{}
@@ -155,7 +154,10 @@ func process_single_file(args cliArgStruct, file inputFile) {
 		// do -e, -s, -l, -c stuff.  trie to come later.
 
 		for _, line_match := range line_matches {
-			slog.Debug("comparing", "line", line_match.String())
+			slog.Debug("comparing", "line", line_match.String(), "args", args.Ipaddr.String())
+
+			// so do I just build the trie here?
+			v4_trie.Add(line_match.ToIPv4())
 			switch {
 			case args.Exact:
 				if args.Ipaddr.Equal(line_match) {
@@ -170,27 +172,17 @@ func process_single_file(args cliArgStruct, file inputFile) {
 					foundMatchingIP = true
 					matchingIPList = append(matchingIPList, line_match)
 					slog.Debug("C-MATCH", "ARG", args.Ipaddr.String(), "CONTAINS", line_match.String())
-					//fmt.Println("ARG", args.Ipaddr, "CONTAINS", line_match)
 				}
 			case args.Subnet:
 				if line_match.Contains(args.Ipaddr) {
 					foundMatchingIP = true
 					matchingIPList = append(matchingIPList, line_match)
 					slog.Debug("S-MATCH", "ARG", line_match.String(), "CONTAINS", args.Ipaddr.String())
-					fmt.Println(line_match, "CONTAINS ARG", args.Ipaddr) // wtf 1.2.3.0/24 CONTAINS ARG 1.2.3.0/18  ipfind -f data/other-sample.txt 1.2.3.0/18 -ds
 
 				}
 			case args.Longest:
-				//fmt.Println("TODO longest")
-				if line_match.Contains(args.Ipaddr) {
-					plen := getHostbits(line_match)
-					longest_subnet_seen = max(longest_subnet_seen, plen)
-					if plen == longest_subnet_seen {
-						fmt.Println(" LONGEST SO FAR", longest_subnet_seen, line_match)
-					}
-				}
-				// just run args.Subnet logic and remember the longest match seen
-				//  need to handle multiple matchesS
+				// TODO: how do I match the lines with the longest prefix?  gonna need two passes.
+				//v4_trie.Add(line_match.ToIPv4()) // use v4_trie.LongestPrefixMatch later
 			}
 			if foundMatchingIP {
 				m := dataMatch{Filename: file.Filename, Idx: idx, MatchLine: line, MatchIPs: matchingIPList}
@@ -201,8 +193,17 @@ func process_single_file(args cliArgStruct, file inputFile) {
 		matchingIPList = matchingIPList[:0] // clear the list out
 	}
 
+	if args.Trie {
+		fmt.Println(v4_trie.ElementsContaining(args.Ipaddr.ToIPv4()))
+	}
+
+	if args.Longest {
+		fmt.Println(v4_trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
+	}
+
 	// haven't done args.Longest yet
 	// but print matches
+
 	if len(fileMatches) > 0 {
 		for _, entry := range fileMatches {
 			fmt.Printf("file:%v idx:%v line:%v matches:%v\n", entry.Filename, entry.Idx, entry.MatchLine, entry.MatchIPs)
@@ -210,16 +211,11 @@ func process_single_file(args cliArgStruct, file inputFile) {
 	}
 }
 
-func getHostbits(match *ipaddr.IPAddress) int {
-	plen := match.GetPrefixLen().Len() // grr if there's no explicit /mask it's 0 not 32 or 128.  wtf. but i can use this to distinguish 1.2.3.4 from 1.2.3.4/32, which might be useful.
-	if plen == 0 {
-		plen = match.GetBitCount()
-	}
-	return plen
-}
-
 func ipcmd(args cliArgStruct) error {
 	slog.Debug("ipcmd", "args", args)
+
+	//fmt.Println("test", args.Ipaddr.ToPrefixBlock(), args.Ipaddr.GetPrefixLen())
+	//os.Exit(0)
 
 	var iFiles = []inputFile{}
 

@@ -12,11 +12,11 @@ import (
 )
 
 type cliArgStruct struct {
-	Ipstring                                       string
-	Exact, Longest, Subnet, Trie, V4, V6, Contains bool
-	InputFiles                                     []string
-	Debug                                          bool
-	Ipaddr                                         *ipaddr.IPAddress
+	Ipstring                                                 string
+	Exact, Longest, Subnet, Trie, V4, V6, Contains, Canonize bool
+	InputFiles                                               []string
+	Debug                                                    bool
+	Ipaddr                                                   *ipaddr.IPAddress
 }
 
 func main() {
@@ -38,6 +38,14 @@ func main() {
 				Name:        "ip",
 				Destination: &cliArgs.Ipstring,
 			},
+			&cli.StringArgs{
+				Name: "file",
+				//Usage:       "input file",
+				//Aliases:     []string{"f"},
+				Min:         0,
+				Max:         -1,
+				Destination: &cliArgs.InputFiles,
+			},
 		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -52,11 +60,12 @@ func main() {
 				Aliases:     []string{"t"},
 				Destination: &cliArgs.Trie,
 			},
-			&cli.StringSliceFlag{
-				Name:        "file",
-				Usage:       "input file",
-				Aliases:     []string{"f"},
-				Destination: &cliArgs.InputFiles,
+
+			&cli.BoolWithInverseFlag{
+				Name:        "canonize",
+				Usage:       "do not canonize to logical mastk",
+				Destination: &cliArgs.Canonize,
+				Value:       true,
 			},
 		},
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
@@ -131,8 +140,8 @@ func main() {
 			logger := slog.New(handler)
 			slog.SetDefault(logger)
 
-			// Longest is default if the other two aren't set
-			cliArgs.Longest = !(cliArgs.Exact || cliArgs.Subnet)
+			// Longest is default if the others aren't set
+			cliArgs.Longest = !(cliArgs.Exact || cliArgs.Subnet || cliArgs.Trie || cliArgs.Contains)
 
 			// turn target IP into address object
 			cliArgs.Ipaddr = ipaddr.NewIPAddressString(cliArgs.Ipstring).GetAddress()
@@ -142,6 +151,12 @@ func main() {
 			} else if cliArgs.Ipaddr.IsIPv6() {
 				cliArgs.V4 = false
 				cliArgs.V6 = true
+			}
+
+			// canonize it unless explicitly disallowed
+			// TODO: treat this differently if -e is set? trying it out.
+			if cliArgs.Canonize && !cliArgs.Exact { // if Canonize is false, don't convert 1.2.3.4/24 into 1.2.3.0/24
+				cliArgs.Ipaddr = cliArgs.Ipaddr.ToPrefixBlock()
 			}
 
 			// run the command
