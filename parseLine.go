@@ -11,21 +11,35 @@ import (
 
 // this file has routes which parse an individual line and return stuff
 
+// first two regexes require /mask, last two it's optional
 var (
-	ipv4Regex       = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?)`)
-	ipv6Regex       = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)
-	v4_line_matches = []*ipaddr.IPAddress{}
-	v6_line_matches = []*ipaddr.IPAddress{}
+	ipv4Regex_withSlash = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2}))`)
+	ipv6Regex_withSlash = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3}))`)
+	ipv4Regex_noSlash   = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?)`)
+	ipv6Regex_noSlash   = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)
+	v4_line_matches     = []*ipaddr.IPAddress{}
+	v6_line_matches     = []*ipaddr.IPAddress{}
+
+	ipv4Regex = ipv4Regex_noSlash
+	ipv6Regex = ipv6Regex_noSlash
 )
 
 func scanLine(args cliArgStruct, ret dataMatch) (dataMatch, bool) {
 
+	if args.Slash {
+		ipv4Regex = ipv4Regex_withSlash
+		ipv6Regex = ipv6Regex_withSlash
+	} else {
+		ipv4Regex = ipv4Regex_noSlash
+		ipv6Regex = ipv6Regex_noSlash
+	}
+
 	if args.V4 {
-		v4_line_matches = get_ipv4_addresses_from_line(ret.MatchLine)
+		v4_line_matches = get_ipv4_addresses_from_line(ret.MatchLine, ipv4Regex)
 	}
 
 	if args.V6 {
-		v6_line_matches = get_ipv6_addresses_from_line(ret.MatchLine)
+		v6_line_matches = get_ipv6_addresses_from_line(ret.MatchLine, ipv6Regex)
 	}
 
 	// note well that this is _regex matches_, not _criteria matches_.
@@ -60,11 +74,11 @@ func get_ip_addresses_from_line(ipre *regexp.Regexp, line string) []*ipaddr.IPAd
 	return ret
 }
 
-func get_ipv4_addresses_from_line(line string) []*ipaddr.IPAddress {
+func get_ipv4_addresses_from_line(line string, ipv4Regex *regexp.Regexp) []*ipaddr.IPAddress {
 	return get_ip_addresses_from_line(ipv4Regex, line)
 }
 
-func get_ipv6_addresses_from_line(line string) []*ipaddr.IPAddress {
+func get_ipv6_addresses_from_line(line string, ipv6Regex *regexp.Regexp) []*ipaddr.IPAddress {
 
 	// hack because the regex is getting messy but this seems ok.
 	ret := []*ipaddr.IPAddress{}

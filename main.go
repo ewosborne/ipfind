@@ -52,8 +52,14 @@ func main() {
 			},
 			&cli.BoolWithInverseFlag{
 				Name:        "canonize",
-				Usage:       "do not canonize to logical mastk",
+				Usage:       "canonize to logical mask",
 				Destination: &cliArgs.Canonize,
+				Value:       true,
+			},
+			&cli.BoolWithInverseFlag{
+				Name:        "slash",
+				Usage:       "require slash to recognize address",
+				Destination: &cliArgs.Slash,
 				Value:       true,
 			},
 		},
