@@ -14,6 +14,22 @@ package main
 	learn how to use the debugger
 
 	get some solid tests cases in place
+
+	better logging?  charmbracelet log? less structured?
+
+	I think ipaddr has ip ranges too, use those?  make this more of a general-purpose grep thing?
+
+	<search network - host, network, range, etc.>
+	  contained-in
+	    longest match vs. subnets
+      contains
+	  exact
+
+things to think through:
+output format (trie, prefix, line)
+performance
+
+
 */
 
 import (
@@ -26,6 +42,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/charmbracelet/log"
 
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
@@ -213,7 +231,13 @@ func process_single_file(args cliArgStruct, file inputFile) {
 }
 
 func ipcmd(args cliArgStruct) error {
+
+	handler := log.New(os.Stderr)
+	logger := slog.New(handler)
+	logger.Error("meow?")
+
 	slog.Debug("ipcmd", "args", args)
+	log.Print("ugly log here")
 
 	//fmt.Println("test", args.Ipaddr.ToPrefixBlock(), args.Ipaddr.GetPrefixLen())
 	//os.Exit(0)
