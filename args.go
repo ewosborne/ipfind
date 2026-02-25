@@ -3,6 +3,7 @@ package main
 import (
 	"log/slog"
 	"os"
+	"regexp"
 
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
@@ -15,6 +16,7 @@ type cliArgStruct struct {
 	InputFiles                   []string
 	Debug                        bool
 	Ipaddr                       *ipaddr.IPAddress
+	IPv4Regex, IPv6Regex         *regexp.Regexp
 }
 
 func argMassage(cliArgs cliArgStruct) cliArgStruct {
@@ -55,6 +57,14 @@ func argMassage(cliArgs cliArgStruct) cliArgStruct {
 	// TODO: treat this differently if -e is set? trying it out.
 	if cliArgs.Canonize && !cliArgs.Exact { // if Canonize is false, don't convert 1.2.3.4/24 into 1.2.3.0/24
 		cliArgs.Ipaddr = cliArgs.Ipaddr.ToPrefixBlock()
+	}
+
+	if cliArgs.Slash {
+		cliArgs.IPv4Regex = ipv4Regex_withSlash
+		cliArgs.IPv6Regex = ipv6Regex_withSlash
+	} else {
+		cliArgs.IPv4Regex = ipv4Regex_noSlash
+		cliArgs.IPv6Regex = ipv6Regex_noSlash
 	}
 
 	return cliArgs

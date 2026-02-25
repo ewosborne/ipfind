@@ -19,28 +19,16 @@ var (
 	ipv6Regex_noSlash   = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)
 	v4_line_matches     = []*ipaddr.IPAddress{}
 	v6_line_matches     = []*ipaddr.IPAddress{}
-
-	// defaults
-	ipv4Regex = ipv4Regex_noSlash
-	ipv6Regex = ipv6Regex_noSlash
 )
 
 func scanLine(args cliArgStruct, ret dataMatch) (dataMatch, bool) {
 
-	if args.Slash {
-		ipv4Regex = ipv4Regex_withSlash
-		ipv6Regex = ipv6Regex_withSlash
-	} else {
-		ipv4Regex = ipv4Regex_noSlash
-		ipv6Regex = ipv6Regex_noSlash
-	}
-
 	if args.V4 {
-		v4_line_matches = get_ipv4_addresses_from_line(ret.MatchLine, ipv4Regex)
+		v4_line_matches = get_ipv4_addresses_from_line(ret.MatchLine, args.IPv4Regex)
 	}
 
 	if args.V6 {
-		v6_line_matches = get_ipv6_addresses_from_line(ret.MatchLine, ipv6Regex)
+		v6_line_matches = get_ipv6_addresses_from_line(ret.MatchLine, args.IPv6Regex)
 	}
 
 	// note well that this is _regex matches_, not _criteria matches_.

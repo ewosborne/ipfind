@@ -64,12 +64,12 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 				}
 
 			case args.Subnet:
-				if ip.Contains(args.Ipaddr) {
+				if args.Ipaddr.Contains(ip) {
 					ret = append(ret, line)
 					break NextLine // TODO do I want to break here?  or do the whole line?
 				}
 			case args.Contains:
-				if args.Ipaddr.Contains(ip) {
+				if ip.Contains(args.Ipaddr) {
 					ret = append(ret, line)
 					break NextLine // TODO same question as Subnet.  when do I want to break?
 				}

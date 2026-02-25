@@ -13,6 +13,7 @@ import (
 	"slices"
 
 	"github.com/charmbracelet/log"
+	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
 
 type inputFile struct {
@@ -21,10 +22,19 @@ type inputFile struct {
 	Scanner  *bufio.Scanner
 }
 
-func displayOutput(matchedLines []dataMatch) {
+func displayOutput(args cliArgStruct, matchedLines []dataMatch, ipv4Trie ipaddr.IPv4AddressTrie, ipv6Trie ipaddr.IPv6AddressTrie) {
 	// todo
 	for _, m := range matchedLines {
 		fmt.Printf("match:%+v\n", m) // this is where any fancy output goes I think
+	}
+
+	if args.Longest {
+		if args.V4 {
+			fmt.Println("LPM", ipv4Trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
+		}
+		if args.V6 {
+			fmt.Println("LPM", ipv6Trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()))
+		}
 	}
 }
 
@@ -47,7 +57,7 @@ func ipcmd(args cliArgStruct) error {
 		//fmt.Printf("need to process file %v\n", i.Filename)
 		// launch a goroutine per file maybe?  for now just do it in order
 		matchedLines, ipv4Trie, ipv6Trie := process_single_file(args, i)
-		displayOutput(matchedLines)
+		displayOutput(args, matchedLines, ipv4Trie, ipv6Trie)
 		fmt.Println("triesize", ipv4Trie.Size(), ipv6Trie.Size())
 		fmt.Println(ipv4Trie)
 

@@ -103,7 +103,7 @@ func main() {
 					{
 						&cli.BoolFlag{
 							Name:        "subnet",
-							Usage:       "subnet match",
+							Usage:       "find all networks which are subnets of the specified network",
 							Aliases:     []string{"s"},
 							Destination: &cliArgs.Subnet,
 						},
@@ -111,7 +111,7 @@ func main() {
 					{
 						&cli.BoolFlag{
 							Name:        "contains",
-							Usage:       "find all networks and hosts contained in the specified subnet",
+							Usage:       "find all networks which contain the specified network",
 							Aliases:     []string{"c"},
 							Destination: &cliArgs.Contains,
 						},
