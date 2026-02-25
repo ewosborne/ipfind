@@ -45,12 +45,11 @@ func process_single_file(args cliArgStruct, file inputFile) []dataMatch {
 	//  saving the results in a matchlist somewhere I guess.
 	//  am I just screening the dataMatch lines again and saving _them_ directly in the matchlist? let's try that.
 
-
 	/* TODO another way to do this loop is
 		walk each line
 		for each match on each line
 		 add match to trie and add the match object
-	
+
 	this would only keep the latest match line by default, need to think through what I want to keep
 	*/
 	for _, line := range scannedFile {
@@ -68,7 +67,7 @@ func process_single_file(args cliArgStruct, file inputFile) []dataMatch {
 			case args.Subnet:
 				if ip.Contains(args.Ipaddr) {
 					ret = append(ret, line)
-					break NextLine  // TODO do I want to break here?  or do the whole line?
+					break NextLine // TODO do I want to break here?  or do the whole line?
 				}
 			case args.Contains:
 				if args.Ipaddr.Contains(ip) {
@@ -100,7 +99,7 @@ func process_single_file(args cliArgStruct, file inputFile) []dataMatch {
 		fmt.Printf("\n\n\n")
 	}
 
-	if && v6_trie.Size() > 0 {
+	if v6_trie.Size() > 0 {
 		fmt.Println(file.Filename, "V6 TRIE", v6_trie)
 		fmt.Println("LPM", v6_trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()))
 		fmt.Printf("\n\n\n")
