@@ -20,6 +20,7 @@ var (
 	v4_line_matches     = []*ipaddr.IPAddress{}
 	v6_line_matches     = []*ipaddr.IPAddress{}
 
+	// defaults
 	ipv4Regex = ipv4Regex_noSlash
 	ipv6Regex = ipv6Regex_noSlash
 )

@@ -46,8 +46,10 @@ func ipcmd(args cliArgStruct) error {
 	for _, i := range iFiles {
 		//fmt.Printf("need to process file %v\n", i.Filename)
 		// launch a goroutine per file maybe?  for now just do it in order
-		matchedLines := process_single_file(args, i)
+		matchedLines, ipv4Trie, ipv6Trie := process_single_file(args, i)
 		displayOutput(matchedLines)
+		fmt.Println("triesize", ipv4Trie.Size(), ipv6Trie.Size())
+		fmt.Println(ipv4Trie)
 
 	}
 

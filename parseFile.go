@@ -13,7 +13,7 @@ type dataMatch struct {
 	MatchIPs  []*ipaddr.IPAddress
 }
 
-func process_single_file(args cliArgStruct, file inputFile) []dataMatch {
+func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr.IPv4AddressTrie, ipaddr.IPv6AddressTrie) {
 	// process a file
 	// return a list of dataMatch objects
 
@@ -107,5 +107,5 @@ func process_single_file(args cliArgStruct, file inputFile) []dataMatch {
 			fmt.Printf("\n\n\n")
 		}
 	*/
-	return ret
+	return ret, v4_trie, v6_trie
 }
