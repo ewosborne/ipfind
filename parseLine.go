@@ -28,7 +28,7 @@ func scanLine(args cliArgStruct, ret dataMatch) (dataMatch, bool) {
 		v6_line_matches = get_ipv6_addresses_from_line(ret.MatchLine)
 	}
 
-	// 	// note well that this is _regex matches_, not _criteria matches_.
+	// note well that this is _regex matches_, not _criteria matches_.
 	line_matches := slices.Concat(v4_line_matches, v6_line_matches)
 	if len(line_matches) == 0 {
 		return ret, false
