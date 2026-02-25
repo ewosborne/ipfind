@@ -4,20 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"log/slog"
 	"os"
 
-	"github.com/seancfoley/ipaddress-go/ipaddr"
 	"github.com/urfave/cli/v3"
 )
-
-type cliArgStruct struct {
-	Ipstring                                                 string
-	Exact, Longest, Subnet, Trie, V4, V6, Contains, Canonize bool
-	InputFiles                                               []string
-	Debug                                                    bool
-	Ipaddr                                                   *ipaddr.IPAddress
-}
 
 func main() {
 
@@ -125,39 +115,12 @@ func main() {
 			},
 		}, // MutuallyExclusiveFlags:
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			// Set up the logger based on the debug flag
-			var logLevel slog.Level
-			if cmd.Bool("debug") {
-				logLevel = slog.LevelDebug
-			} else {
-				logLevel = slog.LevelInfo
-			}
 
-			// Create a handler with the appropriate level
-			handler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-				Level: logLevel,
-			})
-			logger := slog.New(handler)
-			slog.SetDefault(logger)
+			// 1. call argMassage to fix up args
+			// 2. call ipcmd(args) to do stuff
 
-			// Longest is default if the others aren't set
-			cliArgs.Longest = !(cliArgs.Exact || cliArgs.Subnet || cliArgs.Trie || cliArgs.Contains)
-
-			// turn target IP into address object
-			cliArgs.Ipaddr = ipaddr.NewIPAddressString(cliArgs.Ipstring).GetAddress()
-			if cliArgs.Ipaddr.IsIPv4() {
-				cliArgs.V4 = true
-				cliArgs.V6 = false
-			} else if cliArgs.Ipaddr.IsIPv6() {
-				cliArgs.V4 = false
-				cliArgs.V6 = true
-			}
-
-			// canonize it unless explicitly disallowed
-			// TODO: treat this differently if -e is set? trying it out.
-			if cliArgs.Canonize && !cliArgs.Exact { // if Canonize is false, don't convert 1.2.3.4/24 into 1.2.3.0/24
-				cliArgs.Ipaddr = cliArgs.Ipaddr.ToPrefixBlock()
-			}
+			cliArgs := argMassage(cliArgs)
+			// fmt.Printf("massaged args:%+v\n", cliArgs)
 
 			// run the command
 			return ipcmd(cliArgs)
