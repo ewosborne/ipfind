@@ -97,35 +97,3 @@ func get_inputFiles(args cliArgStruct) ([]inputFile, error) {
 
 	return iFiles, nil
 }
-
-/*
-	TODO
-	clean up output
-	handle line vs network print match?
-
-	rewrite file handling in goroutines, or at least prep for that
-	   one goroutine per file (or if stdin, that's just one file)
-	   roll it all up into a per-file map at the top level
-
-	think about how this interacts with trie support.  -ct, -st, -lt, -et vs. just -t.
-
-	learn how to use the debugger
-
-	get some solid tests cases in place
-
-	better logging?  charmbracelet log? less structured?
-
-	I think ipaddr has ip ranges too, use those?  make this more of a general-purpose grep thing?
-
-	<search network - host, network, range, etc.>
-	  contained-in
-	    longest match vs. subnets
-      contains
-	  exact
-
-things to think through:
-output format (trie, prefix, line)
-performance
-
-
-*/
