@@ -74,6 +74,7 @@ func get_ip_addresses_from_line(ipre *regexp.Regexp, line string) []*ipaddr.IPAd
 	return ret
 }
 
+// TODO can I do this part in parallel?  ipv6 in particular is expensive.
 func get_ipv4_addresses_from_line(line string, ipv4Regex *regexp.Regexp) []*ipaddr.IPAddress {
 	return get_ip_addresses_from_line(ipv4Regex, line)
 }

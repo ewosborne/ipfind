@@ -58,7 +58,7 @@ func main() {
 			},
 			&cli.BoolWithInverseFlag{
 				Name:        "slash",
-				Usage:       "require slash to recognize address",
+				Usage:       "require slash to recognize address from input files",
 				Destination: &cliArgs.Slash,
 				Value:       true,
 			},

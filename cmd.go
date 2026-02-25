@@ -21,6 +21,13 @@ type inputFile struct {
 	Scanner  *bufio.Scanner
 }
 
+func displayOutput(matchedLines []dataMatch) {
+	// todo
+	for _, m := range matchedLines {
+		fmt.Printf("match:%+v\n", m) // this is where any fancy output goes I think
+	}
+}
+
 func ipcmd(args cliArgStruct) error {
 
 	handler := log.New(os.Stderr)
@@ -40,9 +47,8 @@ func ipcmd(args cliArgStruct) error {
 		//fmt.Printf("need to process file %v\n", i.Filename)
 		// launch a goroutine per file maybe?  for now just do it in order
 		matchedLines := process_single_file(args, i)
-		for _, m := range matchedLines {
-			fmt.Printf("match:%+v\n", m) // this is where any fancy output goes I think
-		}
+		displayOutput(matchedLines)
+
 	}
 
 	return nil

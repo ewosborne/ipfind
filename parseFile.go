@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log/slog"
 
 	"github.com/seancfoley/ipaddress-go/ipaddr"
@@ -93,16 +92,20 @@ func process_single_file(args cliArgStruct, file inputFile) []dataMatch {
 	}
 
 	// finish up
-	if v4_trie.Size() > 0 {
-		fmt.Println(file.Filename, "V4 TRIE", v4_trie)
-		fmt.Println("LPM", v4_trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
-		fmt.Printf("\n\n\n")
-	}
+	// TODO very much not sure what I want to do with this stuff
+	//  but it doesn't really belong in parseFile.
+	/*
+		if v4_trie.Size() > 0 {
+			fmt.Println(file.Filename, "V4 TRIE", v4_trie)
+			fmt.Println("LPM", v4_trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
+			fmt.Printf("\n\n\n")
+		}
 
-	if v6_trie.Size() > 0 {
-		fmt.Println(file.Filename, "V6 TRIE", v6_trie)
-		fmt.Println("LPM", v6_trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()))
-		fmt.Printf("\n\n\n")
-	}
+		if v6_trie.Size() > 0 {
+			fmt.Println(file.Filename, "V6 TRIE", v6_trie)
+			fmt.Println("LPM", v6_trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()))
+			fmt.Printf("\n\n\n")
+		}
+	*/
 	return ret
 }
