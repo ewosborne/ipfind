@@ -78,3 +78,6 @@ cmd assembles either once it's all done or async, not sure.
 
 
 
+// TODO pick between snake and camel case and whatever
+
+figure out when I want to print trie and what flag triggers is.

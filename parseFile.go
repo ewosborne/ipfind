@@ -19,6 +19,8 @@ func process_single_file(args cliArgStruct, file inputFile) []dataMatch {
 	// return a list of dataMatch objects
 
 	var idx int = 0
+	var v4_trie = ipaddr.IPv4AddressTrie{}
+	var v6_trie = ipaddr.IPv6AddressTrie{}
 
 	scanner := file.Scanner
 	scannedFile := []dataMatch{}
@@ -67,75 +69,33 @@ func process_single_file(args cliArgStruct, file inputFile) []dataMatch {
 				}
 
 			case args.Longest:
-				fmt.Println("TODO args.Longest")
-				break NextLine // need to walk every match, dump in trie.
+				if ip.Contains(args.Ipaddr) {
+					if ip.IsIPv4() {
+						v4_trie.Add(ip.ToIPv4())
+					}
+
+					if ip.IsIPv6() {
+						v6_trie.Add(ip.ToIPv6())
+					}
+					// just dump the whole thing in a trie.  v4 only for now
+					// loop every ip address
+				}
+
 			}
 		}
 	}
+
+	// finish up
+	if args.Longest && v4_trie.Size() > 0 {
+		fmt.Println(file.Filename, "LONGEST TRIE", v4_trie)
+		fmt.Println("LPM", v4_trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
+		fmt.Printf("\n\n\n")
+	}
+
+	if args.Longest && v6_trie.Size() > 0 {
+		fmt.Println(file.Filename, "LONGEST TRIE", v6_trie)
+		fmt.Println("LPM", v6_trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()))
+		fmt.Printf("\n\n\n")
+	}
 	return ret
 }
-
-// 	// ok now I have matches.
-// 	// maybe save everything here?
-// 	// save idx, filename, line, match info
-
-// 	// TODO: this isn't valid because I don't want to save fileMatches until I've done the case matching
-
-// 	// do -e, -s, -l, -c stuff.  trie to come later.
-
-// 	for _, line_match := range line_matches {
-// 		slog.Debug("comparing", "line", line_match.String(), "args", args.Ipaddr.String())
-
-// 		// so do I just build the trie here?
-// 		v4_trie.Add(line_match.ToIPv4())
-// 		switch {
-// 		case args.Exact:
-// 			if args.Ipaddr.Equal(line_match) {
-// 				foundMatchingIP = true
-// 				matchingIPList = append(matchingIPList, line_match)
-// 				slog.Debug("E-MATCH", "EXACT MATCH", line_match.String())
-// 			}
-// 			// OK do I save the matches somewhere?
-// 			// need to save both line and prefix, or maybe just pick between them
-// 		case args.Contains:
-// 			if args.Ipaddr.Contains(line_match) {
-// 				foundMatchingIP = true
-// 				matchingIPList = append(matchingIPList, line_match)
-// 				slog.Debug("C-MATCH", "ARG", args.Ipaddr.String(), "CONTAINS", line_match.String())
-// 			}
-// 		case args.Subnet:
-// 			if line_match.Contains(args.Ipaddr) {
-// 				foundMatchingIP = true
-// 				matchingIPList = append(matchingIPList, line_match)
-// 				slog.Debug("S-MATCH", "ARG", line_match.String(), "CONTAINS", args.Ipaddr.String())
-
-// 			}
-// 		case args.Longest:
-// 			// TODO: how do I match the lines with the longest prefix?  gonna need two passes.
-// 			//v4_trie.Add(line_match.ToIPv4()) // use v4_trie.LongestPrefixMatch later
-// 		}
-// 		if foundMatchingIP {
-// 			m := dataMatch{Filename: file.Filename, Idx: idx, MatchLine: line, MatchIPs: matchingIPList}
-// 			fileMatches = append(fileMatches, m)
-// 		}
-// 	}
-// 	foundMatchingIP = false
-// 	matchingIPList = matchingIPList[:0] // clear the list out
-// }
-
-// if args.Trie {
-// 	fmt.Println(v4_trie.ElementsContaining(args.Ipaddr.ToIPv4()))
-// }
-
-// if args.Longest {
-// 	fmt.Println(v4_trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
-// }
-
-// haven't done args.Longest yet
-// but print matches
-
-// if len(fileMatches) > 0 {
-// 	for _, entry := range fileMatches {
-// 		fmt.Printf("file:%v idx:%v line:%v matches:%v\n", entry.Filename, entry.Idx, entry.MatchLine, entry.MatchIPs)
-// 	}
-// }

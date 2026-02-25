@@ -74,7 +74,6 @@ func get_inputFiles(args cliArgStruct) ([]inputFile, error) {
 	var iFiles = []inputFile{}
 
 	// build list of files or stdin
-	// TODO: preserve filename here for later reporting.
 	if len(args.InputFiles) == 0 {
 		slog.Debug("reading from stdin")
 		iFiles = append(iFiles, inputFile{Filename: "os.Stdin", IsStdin: true, Scanner: bufio.NewScanner(os.Stdin)})

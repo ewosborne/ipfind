@@ -11,8 +11,6 @@ import (
 
 // this file has routes which parse an individual line and return stuff
 
-// TODO pick between snake and camel case and whatever
-
 var (
 	ipv4Regex       = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?)`)
 	ipv6Regex       = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)

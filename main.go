@@ -50,7 +50,6 @@ func main() {
 				Aliases:     []string{"t"},
 				Destination: &cliArgs.Trie,
 			},
-
 			&cli.BoolWithInverseFlag{
 				Name:        "canonize",
 				Usage:       "do not canonize to logical mastk",
