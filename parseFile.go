@@ -45,6 +45,14 @@ func process_single_file(args cliArgStruct, file inputFile) []dataMatch {
 	//  saving the results in a matchlist somewhere I guess.
 	//  am I just screening the dataMatch lines again and saving _them_ directly in the matchlist? let's try that.
 
+
+	/* TODO another way to do this loop is
+		walk each line
+		for each match on each line
+		 add match to trie and add the match object
+	
+	this would only keep the latest match line by default, need to think through what I want to keep
+	*/
 	for _, line := range scannedFile {
 		slog.Debug("considering", "line", line)
 
@@ -60,12 +68,12 @@ func process_single_file(args cliArgStruct, file inputFile) []dataMatch {
 			case args.Subnet:
 				if ip.Contains(args.Ipaddr) {
 					ret = append(ret, line)
-					break NextLine
+					break NextLine  // TODO do I want to break here?  or do the whole line?
 				}
 			case args.Contains:
 				if args.Ipaddr.Contains(ip) {
 					ret = append(ret, line)
-					break NextLine
+					break NextLine // TODO same question as Subnet.  when do I want to break?
 				}
 
 			case args.Longest:
@@ -86,14 +94,14 @@ func process_single_file(args cliArgStruct, file inputFile) []dataMatch {
 	}
 
 	// finish up
-	if args.Longest && v4_trie.Size() > 0 {
-		fmt.Println(file.Filename, "LONGEST TRIE", v4_trie)
+	if v4_trie.Size() > 0 {
+		fmt.Println(file.Filename, "V4 TRIE", v4_trie)
 		fmt.Println("LPM", v4_trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
 		fmt.Printf("\n\n\n")
 	}
 
-	if args.Longest && v6_trie.Size() > 0 {
-		fmt.Println(file.Filename, "LONGEST TRIE", v6_trie)
+	if && v6_trie.Size() > 0 {
+		fmt.Println(file.Filename, "V6 TRIE", v6_trie)
 		fmt.Println("LPM", v6_trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()))
 		fmt.Printf("\n\n\n")
 	}
