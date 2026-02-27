@@ -80,32 +80,42 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 
 	NextLine:
 		for _, ip := range line.MatchIPs {
-			if ip.Contains(args.Ipaddr) {
-				if ip.IsIPv4() {
-					v4_trie.Add(ip.ToIPv4())
-				}
-
-				if ip.IsIPv6() {
-					v6_trie.Add(ip.ToIPv6())
-				}
-				// just dump the whole thing in a trie.  v4 only for now
-				// loop every ip address
-			}
 			switch {
 			case args.Exact:
 				if ip.Equal(args.Ipaddr) {
 					ret = append(ret, line)
+					if ip.IsIPv4() {
+						v4_trie.Add(ip.ToIPv4())
+					}
+
+					if ip.IsIPv6() {
+						v6_trie.Add(ip.ToIPv6())
+					}
 					break NextLine
 				}
 
 			case args.Subnet:
 				if args.Ipaddr.Contains(ip) {
 					ret = append(ret, line)
+					if ip.IsIPv4() {
+						v4_trie.Add(ip.ToIPv4())
+					}
+
+					if ip.IsIPv6() {
+						v6_trie.Add(ip.ToIPv6())
+					}
 					break NextLine // TODO do I want to break here?  or do the whole line?
 				}
 			case args.Contains:
 				if ip.Contains(args.Ipaddr) {
 					ret = append(ret, line)
+					if ip.IsIPv4() {
+						v4_trie.Add(ip.ToIPv4())
+					}
+
+					if ip.IsIPv6() {
+						v6_trie.Add(ip.ToIPv6())
+					}
 					break NextLine // TODO same question as Subnet.  when do I want to break?
 				}
 
