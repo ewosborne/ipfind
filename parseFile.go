@@ -80,6 +80,17 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 
 	NextLine:
 		for _, ip := range line.MatchIPs {
+			if ip.Contains(args.Ipaddr) {
+				if ip.IsIPv4() {
+					v4_trie.Add(ip.ToIPv4())
+				}
+
+				if ip.IsIPv6() {
+					v6_trie.Add(ip.ToIPv6())
+				}
+				// just dump the whole thing in a trie.  v4 only for now
+				// loop every ip address
+			}
 			switch {
 			case args.Exact:
 				if ip.Equal(args.Ipaddr) {
@@ -99,18 +110,7 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 				}
 
 			case args.Longest:
-				if ip.Contains(args.Ipaddr) {
-					if ip.IsIPv4() {
-						v4_trie.Add(ip.ToIPv4())
-					}
-
-					if ip.IsIPv6() {
-						v6_trie.Add(ip.ToIPv6())
-					}
-					// just dump the whole thing in a trie.  v4 only for now
-					// loop every ip address
-				}
-
+				// nothing to do here?
 			}
 		}
 	}

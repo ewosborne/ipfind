@@ -53,7 +53,8 @@ func argMassage(cliArgs cliArgStruct) cliArgStruct {
 	slog.SetDefault(logger)
 
 	// Longest is default if the others aren't set
-	cliArgs.Longest = !(cliArgs.Exact || cliArgs.Subnet || cliArgs.Trie || cliArgs.Contains)
+	//	cliArgs.Longest = !(cliArgs.Exact || cliArgs.Subnet || cliArgs.Trie || cliArgs.Contains)
+	cliArgs.Longest = !(cliArgs.Exact || cliArgs.Subnet || cliArgs.Contains)
 
 	// turn target IP into address object
 	cliArgs.Ipaddr = ipaddr.NewIPAddressString(cliArgs.Ipstring).GetAddress()
