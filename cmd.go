@@ -24,7 +24,7 @@ type inputFile struct {
 
 func displayOutput(args cliArgStruct, matchedLines []dataMatch, ipv4Trie ipaddr.IPv4AddressTrie, ipv6Trie ipaddr.IPv6AddressTrie) {
 
-	// need a redo.  three output formats: text, json, trie
+	// three output formats: text, json, trie
 
 	if args.Json {
 		b, err := json.MarshalIndent(matchedLines, "", "  ")
@@ -33,21 +33,22 @@ func displayOutput(args cliArgStruct, matchedLines []dataMatch, ipv4Trie ipaddr.
 		}
 		fmt.Print(string(b))
 	} else if args.Trie {
-		if args.V4 {
-			if args.Longest {
-				fmt.Println("IPv4 LPM", ipv4Trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
-			}
-			if args.Trie && ipv4Trie.Size() > 0 {
-				fmt.Println(ipv4Trie)
-			}
+		if ipv4Trie.Size() > 0 {
+			fmt.Println(ipv4Trie)
 		}
-		if args.V6 {
-			fmt.Println("IPv6 LPM", ipv6Trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()))
-		}
-		if args.Trie && ipv6Trie.Size() > 0 {
+
+		if ipv6Trie.Size() > 0 {
 			fmt.Println(ipv6Trie)
 		}
-	} else {
+	} else { // default mode is per line
+		if args.Longest {
+			if ipv4Trie.Size() > 0 {
+				fmt.Println("IPv4 LPM", ipv4Trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
+			}
+			if ipv6Trie.Size() > 0 {
+				fmt.Println("IPv6 LPM", ipv6Trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()))
+			}
+		}
 		for _, m := range matchedLines {
 			log.Debugf("%v:%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine, m.MatchIPs)
 			fmt.Printf("%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine)

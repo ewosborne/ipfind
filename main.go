@@ -44,18 +44,6 @@ func main() {
 				Usage:       "print debug output",
 				Destination: &cliArgs.Debug,
 			},
-			&cli.BoolFlag{
-				Name:        "json",
-				Aliases:     []string{"j"},
-				Usage:       "output as JSON",
-				Destination: &cliArgs.Json,
-			},
-			&cli.BoolFlag{
-				Name:        "trie",
-				Usage:       "print trie",
-				Aliases:     []string{"t"},
-				Destination: &cliArgs.Trie,
-			},
 			&cli.BoolWithInverseFlag{
 				Name:        "canonize",
 				Usage:       "canonize to logical mask",
@@ -70,24 +58,26 @@ func main() {
 			},
 		},
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
-			// {
-			// 	Flags: [][]cli.Flag{
-			// 		{
-			// 			&cli.BoolFlag{
-			// 				Name:        "v4",
-			// 				Usage:       "force ipv4",
-			// 				Destination: &cliArgs.V4,
-			// 			},
-			// 		},
-			// 		{
-			// 			&cli.BoolFlag{
-			// 				Name:        "v6",
-			// 				Usage:       "force ipv6",
-			// 				Destination: &cliArgs.V6,
-			// 			},
-			// 		},
-			// 	},
-			// },
+			{
+				Flags: [][]cli.Flag{
+					{
+						&cli.BoolFlag{
+							Name:        "json",
+							Aliases:     []string{"j"},
+							Usage:       "json output",
+							Destination: &cliArgs.Json,
+						},
+					},
+					{
+						&cli.BoolFlag{
+							Name:        "trie",
+							Aliases:     []string{"t"},
+							Usage:       "print trie",
+							Destination: &cliArgs.Trie,
+						},
+					},
+				},
+			},
 			{
 				Flags: [][]cli.Flag{
 					{
