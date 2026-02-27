@@ -45,6 +45,12 @@ func main() {
 				Destination: &cliArgs.Debug,
 			},
 			&cli.BoolFlag{
+				Name:        "json",
+				Aliases:     []string{"j"},
+				Usage:       "output as JSON",
+				Destination: &cliArgs.Json,
+			},
+			&cli.BoolFlag{
 				Name:        "trie",
 				Usage:       "print trie",
 				Aliases:     []string{"t"},

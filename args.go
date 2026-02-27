@@ -13,7 +13,7 @@ type cliArgStruct struct {
 	Ipstring                     string
 	Exact, Longest, Subnet, Trie bool
 	V4, V6, Contains, Canonize   bool
-	Slash                        bool
+	Slash, Json                  bool
 	InputFiles                   []string
 	Debug                        bool
 	Ipaddr                       *ipaddr.IPAddress

@@ -36,7 +36,11 @@ func scanLine(args cliArgStruct, ret dataMatch) (dataMatch, bool) {
 	if len(line_matches) == 0 {
 		return ret, false
 	} else {
+
+		// TODO wtf why isn't this set?
 		ret.MatchIPs = line_matches
+		//ret.MatchIPs = slices.Clone(line_matches)
+		//copy(ret.MatchIPs, line_matches)
 	}
 
 	return ret, true

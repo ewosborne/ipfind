@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+
 	"github.com/charmbracelet/log"
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
@@ -10,6 +12,26 @@ type dataMatch struct {
 	Idx       int
 	MatchLine string
 	MatchIPs  []*ipaddr.IPAddress
+}
+
+func (dm dataMatch) MarshalJSON() ([]byte, error) {
+	var ipStrings []string
+	for _, ip := range dm.MatchIPs {
+		if ip != nil {
+			ipStrings = append(ipStrings, ip.String()) // assuming IPAddress has a String() method
+		}
+	}
+	return json.Marshal(struct {
+		Filename  string   `json:"filename"`
+		Idx       int      `json:"idx"`
+		MatchLine string   `json:"match_line"`
+		MatchIPs  []string `json:"match_ips"`
+	}{
+		Filename:  dm.Filename,
+		Idx:       dm.Idx,
+		MatchLine: dm.MatchLine,
+		MatchIPs:  ipStrings,
+	})
 }
 
 func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr.IPv4AddressTrie, ipaddr.IPv6AddressTrie) {
@@ -32,6 +54,8 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 		if !ok {                                                                                // no matches on this line
 			continue
 		}
+
+		log.Debug("scanned line", "sl", dm)
 
 		// now do stuff with a line we just got
 		scannedFile = append(scannedFile, dm)
@@ -90,21 +114,5 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 		}
 	}
 
-	// finish up
-	// TODO very much not sure what I want to do with this stuff
-	//  but it doesn't really belong in parseFile.
-	/*
-		if v4_trie.Size() > 0 {
-			fmt.Println(file.Filename, "V4 TRIE", v4_trie)
-			fmt.Println("LPM", v4_trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
-			fmt.Printf("\n\n\n")
-		}
-
-		if v6_trie.Size() > 0 {
-			fmt.Println(file.Filename, "V6 TRIE", v6_trie)
-			fmt.Println("LPM", v6_trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()))
-			fmt.Printf("\n\n\n")
-		}
-	*/
 	return ret, v4_trie, v6_trie
 }
