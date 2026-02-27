@@ -32,11 +32,9 @@ func displayOutput(args cliArgStruct, matchedLines []dataMatch, ipv4Trie ipaddr.
 		fmt.Print(string(b))
 	} else {
 		for _, m := range matchedLines {
-			//fmt.Printf("match:%+v\n", m) // this is where any fancy output goes I think
 			log.Debugf("%v:%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine, m.MatchIPs)
 			fmt.Printf("%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine)
 		}
-
 	}
 
 	if args.Longest {
@@ -50,13 +48,6 @@ func displayOutput(args cliArgStruct, matchedLines []dataMatch, ipv4Trie ipaddr.
 }
 
 func ipcmd(args cliArgStruct) error {
-
-	// handler := log.New(os.Stderr)
-	// logger := slog.New(handler)
-	// logger.Error("meow?")
-
-	// logger.Debug("ipcmd", "args", args)
-	// logger.Info("ugly log here")
 
 	iFiles, err := get_inputFiles(args)
 	if err != nil {
