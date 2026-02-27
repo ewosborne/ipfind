@@ -10,7 +10,7 @@ bt: test build
 b: build
 
 build: fmt
-	go build -o ipfind .
+	go build -ldflags "-s -w" -o ipfind .
 
 test:
 	go test ./... -v
