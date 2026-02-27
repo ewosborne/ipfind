@@ -23,38 +23,18 @@ type inputFile struct {
 }
 
 func displayOutput(args cliArgStruct, matchedLines []dataMatch, ipv4Trie ipaddr.IPv4AddressTrie, ipv6Trie ipaddr.IPv6AddressTrie) {
-	// todo
-	var to_print string
 
 	if args.Json {
 		b, err := json.MarshalIndent(matchedLines, "", "  ")
 		if err != nil {
 			log.Error(err)
 		}
-
-		to_print = fmt.Sprint(string(b))
-		fmt.Print((to_print))
+		fmt.Print(string(b))
 	} else {
-
 		for _, m := range matchedLines {
 			//fmt.Printf("match:%+v\n", m) // this is where any fancy output goes I think
 			log.Debugf("%v:%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine, m.MatchIPs)
-
-			if args.Json {
-				// print stuff as json
-
-				b, err := json.MarshalIndent(m, "", "  ")
-				if err != nil {
-					log.Error(err)
-				}
-
-				to_print = fmt.Sprint(string(b))
-
-			} else {
-				to_print = fmt.Sprintf("%v:%v:%v", m.Filename, m.Idx, m.MatchLine)
-			}
-
-			fmt.Println(to_print)
+			fmt.Printf("%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine)
 		}
 
 	}
