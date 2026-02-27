@@ -14,11 +14,12 @@ type dataMatch struct {
 	MatchIPs  []*ipaddr.IPAddress
 }
 
+// need this because the debugger can't figure out MatchIPs otherwise
 func (dm dataMatch) MarshalJSON() ([]byte, error) {
 	var ipStrings []string
 	for _, ip := range dm.MatchIPs {
 		if ip != nil {
-			ipStrings = append(ipStrings, ip.String()) // assuming IPAddress has a String() method
+			ipStrings = append(ipStrings, ip.String())
 		}
 	}
 	return json.Marshal(struct {
