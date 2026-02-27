@@ -1,11 +1,11 @@
 package main
 
 import (
-	"log/slog"
 	"regexp"
 	"slices"
 	"strings"
 
+	"github.com/charmbracelet/log"
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
 
@@ -48,12 +48,12 @@ func get_ip_addresses_from_line(ipre *regexp.Regexp, line string) []*ipaddr.IPAd
 	if ipStrings == nil { // no matches
 		return nil
 	}
-	slog.Debug("FindAllString", "v4", ipStrings)
+	log.Debug("FindAllString", "v4", ipStrings)
 
 	for _, ipString := range ipStrings {
-		slog.Debug("before", "addrString", ipString)
+		log.Debug("before", "addrString", ipString)
 		converted := ipaddr.NewIPAddressString(ipString).GetAddress()
-		slog.Debug("after", "converted", converted.String())
+		log.Debug("after", "converted", converted.String())
 		if converted != nil { // no successful conversions, matches must have been bogus
 			ret = append(ret, converted)
 		}

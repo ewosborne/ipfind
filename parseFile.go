@@ -1,8 +1,7 @@
 package main
 
 import (
-	"log/slog"
-
+	"github.com/charmbracelet/log"
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
 
@@ -52,7 +51,7 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 	this would only keep the latest match line by default, need to think through what I want to keep
 	*/
 	for _, line := range scannedFile {
-		slog.Debug("considering", "line", line)
+		log.Debug("considering", "line", line)
 
 	NextLine:
 		for _, ip := range line.MatchIPs {

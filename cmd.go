@@ -7,7 +7,6 @@ import (
 	"bufio"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -41,12 +40,12 @@ func displayOutput(args cliArgStruct, matchedLines []dataMatch, ipv4Trie ipaddr.
 
 func ipcmd(args cliArgStruct) error {
 
-	handler := log.New(os.Stderr)
-	logger := slog.New(handler)
-	logger.Error("meow?")
+	// handler := log.New(os.Stderr)
+	// logger := slog.New(handler)
+	// logger.Error("meow?")
 
-	slog.Debug("ipcmd", "args", args)
-	log.Print("ugly log here")
+	// logger.Debug("ipcmd", "args", args)
+	// logger.Info("ugly log here")
 
 	iFiles, err := get_inputFiles(args)
 	if err != nil {
@@ -92,10 +91,10 @@ func get_inputFiles(args cliArgStruct) ([]inputFile, error) {
 
 	// build list of files or stdin
 	if len(args.InputFiles) == 0 {
-		slog.Debug("reading from stdin")
+		log.Debug("reading from stdin")
 		iFiles = append(iFiles, inputFile{Filename: "os.Stdin", IsStdin: true, Scanner: bufio.NewScanner(os.Stdin)})
 	} else {
-		slog.Debug("ifiles are", "ifiles", args.InputFiles)
+		log.Debug("ifiles are", "ifiles", args.InputFiles)
 		// InputFiles is a slice. each element in the slice is either a file or a directory name.
 		files, err := getFilesFromArgs(args.InputFiles)
 		if err != nil {
@@ -104,7 +103,7 @@ func get_inputFiles(args cliArgStruct) ([]inputFile, error) {
 
 		slices.Sort(files)
 
-		slog.Debug("files to walk are", "file", files)
+		log.Debug("files to walk are", "file", files)
 		for _, file := range files {
 			tmp, _ := os.Open(file)
 			iFiles = append(iFiles, inputFile{IsStdin: false, Filename: file, Scanner: bufio.NewScanner(tmp)})

@@ -5,6 +5,7 @@ import (
 	"os"
 	"regexp"
 
+	"github.com/charmbracelet/log"
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
 
@@ -25,19 +26,30 @@ func argMassage(cliArgs cliArgStruct) cliArgStruct {
 	// return it
 
 	// Set up the logger based on the debug flag
-	var logLevel slog.Level
-	//if cmd.Bool("debug") { <--- useless?
-	if cliArgs.Debug {
-		logLevel = slog.LevelDebug
-	} else {
-		logLevel = slog.LevelInfo
-	}
+	// var logLevel slog.Level
+	// //if cmd.Bool("debug") { <--- useless?
+	// if cliArgs.Debug {
+	// 	logLevel = slog.LevelDebug
+	// } else {
+	// 	logLevel = slog.LevelInfo
+	// }
 
 	// Create a handler with the appropriate level
-	handler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-		Level: logLevel,
-	})
+	// handler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+	// 	Level: logLevel,
+	// })
+
+	//logger := slog.New(handler)
+
+	handler := log.New(os.Stderr)
 	logger := slog.New(handler)
+
+	if cliArgs.Debug {
+		log.SetLevel(log.DebugLevel)
+		log.Debug(("in debug level"))
+	} else {
+		log.SetLevel(log.InfoLevel)
+	}
 	slog.SetDefault(logger)
 
 	// Longest is default if the others aren't set
