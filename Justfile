@@ -1,15 +1,6 @@
 # justfile for ipfind
 
-hello:
-	go run . 1.2.3.4
-
-
-bt: test build
-	./ipfind 1.2.3.4 sample.txt -l
-
-b: build
-
-build: fmt
+build: clean fmt test
 	go build -ldflags "-s -w" -o ipfind .
 
 test:
