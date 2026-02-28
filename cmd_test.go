@@ -26,6 +26,14 @@ func TestDisplayOutput(t *testing.T) {
 			wantOutput: "test.txt:1:1.1.1.1 is here\n",
 		},
 		{
+			name: "Simple IPv6 text output",
+			args: cliArgStruct{},
+			matchedLines: []dataMatch{
+				{Filename: "test6.txt", Idx: 10, MatchLine: "2001:db8::1 is here"},
+			},
+			wantOutput: "test6.txt:10:2001:db8::1 is here\n",
+		},
+		{
 			name: "JSON output",
 			args: cliArgStruct{Json: true},
 			matchedLines: []dataMatch{
@@ -35,6 +43,17 @@ func TestDisplayOutput(t *testing.T) {
 				},
 			},
 			wantOutput: "[\n  {\n    \"filename\": \"test.txt\",\n    \"idx\": 1,\n    \"match_line\": \"1.1.1.1 is here\",\n    \"match_ips\": [\n      \"1.1.1.1\"\n    ]\n  }\n]",
+		},
+		{
+			name: "JSON IPv6 output",
+			args: cliArgStruct{Json: true},
+			matchedLines: []dataMatch{
+				{
+					Filename: "test6.txt", Idx: 10, MatchLine: "2001:db8::1 is here",
+					MatchIPs: []*ipaddr.IPAddress{ipaddr.NewIPAddressString("2001:db8::1").GetAddress()},
+				},
+			},
+			wantOutput: "[\n  {\n    \"filename\": \"test6.txt\",\n    \"idx\": 10,\n    \"match_line\": \"2001:db8::1 is here\",\n    \"match_ips\": [\n      \"2001:db8::1\"\n    ]\n  }\n]",
 		},
 		{
 			name: "Longest match output",

@@ -47,6 +47,38 @@ func TestArgMassage(t *testing.T) {
 				Ipaddr:   ipaddr.NewIPAddressString("1.1.1.1/24").GetAddress(),
 			},
 		},
+		{
+			name: "IPv6 Default to Longest",
+			in: cliArgStruct{
+				Ipstring: "2001:db8::1",
+				Slash:    true,
+			},
+			want: cliArgStruct{
+				Ipstring:  "2001:db8::1",
+				Longest:   true,
+				V4:        false,
+				V6:        true,
+				Slash:     true,
+				IPv4Regex: ipv4Regex_withSlash,
+				IPv6Regex: ipv6Regex_withSlash,
+				Ipaddr:    ipaddr.NewIPAddressString("2001:db8::1").GetAddress(),
+			},
+		},
+		{
+			name: "IPv6 Exact match",
+			in: cliArgStruct{
+				Ipstring: "2001:db8::/32",
+				Exact:    true,
+			},
+			want: cliArgStruct{
+				Ipstring: "2001:db8::/32",
+				Exact:    true,
+				Longest:  false,
+				V4:       false,
+				V6:       true,
+				Ipaddr:   ipaddr.NewIPAddressString("2001:db8::/32").GetAddress(),
+			},
+		},
 	}
 
 	for _, tt := range tests {

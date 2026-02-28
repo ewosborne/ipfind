@@ -62,6 +62,39 @@ func TestProcessSingleFile(t *testing.T) {
 			// and returns an empty match list for lines.
 			wantMatchLines: nil,
 		},
+		{
+			name: "Exact match IPv6",
+			args: cliArgStruct{
+				V6:        true,
+				IPv6Regex: ipv6Regex_noSlash,
+				Ipaddr:    ipaddr.NewIPAddressString("2001:db8::1").GetAddress(),
+				Exact:     true,
+			},
+			fileContent:    "2001:db8::1\n2001:db8::2\n2001:db8::1/128",
+			wantMatchLines: []string{"2001:db8::1", "2001:db8::1/128"},
+		},
+		{
+			name: "Subnet match IPv6",
+			args: cliArgStruct{
+				V6:        true,
+				IPv6Regex: ipv6Regex_noSlash,
+				Ipaddr:    ipaddr.NewIPAddressString("2001:db8::/32").GetAddress(),
+				Subnet:    true,
+			},
+			fileContent:    "2001:db8::1\nfe80::1\n2001:db8:1234::/48",
+			wantMatchLines: []string{"2001:db8::1", "2001:db8:1234::/48"},
+		},
+		{
+			name: "Contains match IPv6",
+			args: cliArgStruct{
+				V6:        true,
+				IPv6Regex: ipv6Regex_noSlash,
+				Ipaddr:    ipaddr.NewIPAddressString("2001:db8::1").GetAddress(),
+				Contains:  true,
+			},
+			fileContent:    "2001:db8::/32\n2001::/16\n2001:db8::1",
+			wantMatchLines: []string{"2001:db8::/32", "2001::/16", "2001:db8::1"},
+		},
 	}
 
 	for _, tt := range tests {

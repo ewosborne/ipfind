@@ -123,6 +123,12 @@ func TestGetIpAddressesFromLine(t *testing.T) {
 			line:    "1.1.1.1, 2.2.2.2/24",
 			wantIPs: []string{"1.1.1.1", "2.2.2.2/24"},
 		},
+		{
+			name:    "Multiple IPv6",
+			re:      ipv6Regex_noSlash,
+			line:    "2001:db8::1, 2001:db8::2/64",
+			wantIPs: []string{"2001:db8::1", "2001:db8::2/64"},
+		},
 	}
 
 	for _, tt := range tests {
