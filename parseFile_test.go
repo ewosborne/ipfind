@@ -10,6 +10,7 @@ import (
 )
 
 func TestProcessSingleFile(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		args           cliArgStruct
@@ -99,6 +100,7 @@ func TestProcessSingleFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			file := inputFile{
 				Filename: "test.txt",
 				Scanner:  bufio.NewScanner(strings.NewReader(tt.fileContent)),

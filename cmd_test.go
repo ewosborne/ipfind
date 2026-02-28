@@ -9,6 +9,7 @@ import (
 )
 
 func TestDisplayOutput(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		args         cliArgStruct
@@ -85,6 +86,7 @@ func TestDisplayOutput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var w bytes.Buffer
 			displayOutput(&w, tt.args, tt.matchedLines, tt.ipv4Trie, tt.ipv6Trie)
 			got := w.String()

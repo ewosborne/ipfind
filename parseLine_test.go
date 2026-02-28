@@ -7,6 +7,7 @@ import (
 )
 
 func TestScanLine(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		args    cliArgStruct
@@ -92,6 +93,7 @@ func TestScanLine(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dm := dataMatch{MatchLine: tt.line}
 			got, ok := scanLine(tt.args, dm)
 			if ok != tt.wantOK {
@@ -111,6 +113,7 @@ func TestScanLine(t *testing.T) {
 }
 
 func TestGetIpAddressesFromLine(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		re      *regexp.Regexp
@@ -133,6 +136,7 @@ func TestGetIpAddressesFromLine(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := get_ip_addresses_from_line(tt.re, tt.line)
 			var gotIPs []string
 			for _, ip := range got {
