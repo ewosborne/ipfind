@@ -148,3 +148,16 @@ func TestGetIpAddressesFromLine(t *testing.T) {
 		})
 	}
 }
+
+func TestIPv4RegexBug(t *testing.T) {
+	t.Parallel()
+	line := "111G333G444G999"
+	if ipv4Regex_noSlash.MatchString(line) {
+		t.Errorf("ipv4Regex_noSlash matched invalid IP %s", line)
+	}
+
+	lineWithSlash := "111G333G444G999/24"
+	if ipv4Regex_withSlash.MatchString(lineWithSlash) {
+		t.Errorf("ipv4Regex_withSlash matched invalid IP %s", lineWithSlash)
+	}
+}

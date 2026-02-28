@@ -1,6 +1,7 @@
-TODO handle err and nil, don't be lazy
-TODO test cases
+TODO handle err and nil, don't be lazy. take AI idiomatic suggestions
 TODO tab completion, however that works
+TODO turn it into an importable library
+TODO readme
 
 
 maybe call it 'grip'?  'go recognize IPs'?
