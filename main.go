@@ -98,7 +98,7 @@ func main() {
 					},
 					{
 						&cli.BoolFlag{
-							Name:        "subnet",
+							Name:        "subnets-of",
 							Usage:       "find all networks which are subnets of the specified network",
 							Aliases:     []string{"s"},
 							Destination: &cliArgs.Subnet,
