@@ -12,7 +12,7 @@ fmt:
 clean:
 	rm -f ipfind
 
-install: build
+install: clean build
 	mkdir -p $HOME/bin
 	cp ipfind $HOME/bin/
 	chmod 755 $HOME/bin/ipfind
