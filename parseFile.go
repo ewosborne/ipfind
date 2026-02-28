@@ -120,7 +120,13 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 				}
 
 			case args.Longest:
-				// nothing to do here?
+				if ip.IsIPv4() {
+					v4_trie.Add(ip.ToIPv4())
+				}
+
+				if ip.IsIPv6() {
+					v6_trie.Add(ip.ToIPv6())
+				}
 			}
 		}
 	}

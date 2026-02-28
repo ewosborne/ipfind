@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -22,7 +23,7 @@ type inputFile struct {
 	Scanner  *bufio.Scanner
 }
 
-func displayOutput(args cliArgStruct, matchedLines []dataMatch, ipv4Trie ipaddr.IPv4AddressTrie, ipv6Trie ipaddr.IPv6AddressTrie) {
+func displayOutput(w io.Writer, args cliArgStruct, matchedLines []dataMatch, ipv4Trie ipaddr.IPv4AddressTrie, ipv6Trie ipaddr.IPv6AddressTrie) {
 
 	// three output formats: text, json, trie
 
@@ -31,36 +32,36 @@ func displayOutput(args cliArgStruct, matchedLines []dataMatch, ipv4Trie ipaddr.
 		if err != nil {
 			log.Error(err)
 		}
-		fmt.Print(string(b))
+		fmt.Fprint(w, string(b))
 	} else if args.Trie {
 		if ipv4Trie.Size() > 0 {
-			fmt.Println(ipv4Trie)
+			fmt.Fprintln(w, ipv4Trie)
 		}
 
 		if ipv6Trie.Size() > 0 {
-			fmt.Println(ipv6Trie)
+			fmt.Fprintln(w, ipv6Trie)
 		}
 	} else { // default mode is per line
 		if args.Longest {
 			if ipv4Trie.Size() > 0 {
-				fmt.Println("IPv4 LPM", ipv4Trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
+				fmt.Fprintln(w, "IPv4 LPM", ipv4Trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
 			}
 			if ipv6Trie.Size() > 0 {
-				fmt.Println("IPv6 LPM", ipv6Trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()))
+				fmt.Fprintln(w, "IPv6 LPM", ipv6Trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()))
 			}
 		}
 		for _, m := range matchedLines {
 			log.Debugf("%v:%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine, m.MatchIPs)
-			fmt.Printf("%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine)
+			fmt.Fprintf(w, "%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine)
 		}
 	}
 }
 
-func ipcmd(args cliArgStruct) error {
+func ipcmd(w io.Writer, args cliArgStruct) error {
 
 	iFiles, err := get_inputFiles(args)
 	if err != nil {
-		panic("need to handle this error but lazy")
+		return fmt.Errorf("failed to get input files: %w", err)
 	}
 
 	// walk stuff.  this needs a rewrite with channels and a worker pool.
@@ -68,7 +69,7 @@ func ipcmd(args cliArgStruct) error {
 		//fmt.Printf("need to process file %v\n", i.Filename)
 		// launch a goroutine per file maybe?  for now just do it in order
 		matchedLines, ipv4Trie, ipv6Trie := process_single_file(args, i)
-		displayOutput(args, matchedLines, ipv4Trie, ipv6Trie)
+		displayOutput(w, args, matchedLines, ipv4Trie, ipv6Trie)
 
 	}
 
@@ -116,7 +117,10 @@ func get_inputFiles(args cliArgStruct) ([]inputFile, error) {
 
 		log.Debug("files to walk are", "file", files)
 		for _, file := range files {
-			tmp, _ := os.Open(file)
+			tmp, err := os.Open(file)
+			if err != nil {
+				return nil, fmt.Errorf("failed to open file %s: %w", file, err)
+			}
 			iFiles = append(iFiles, inputFile{IsStdin: false, Filename: file, Scanner: bufio.NewScanner(tmp)})
 
 		}
