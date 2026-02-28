@@ -17,11 +17,11 @@ var (
 	ipv6Regex_withSlash = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3}))`)
 	ipv4Regex_noSlash   = regexp.MustCompile(`(\d{1,3}).(\d{1,3}).(\d{1,3}).(\d{1,3}(/\d{1,2})?)`)
 	ipv6Regex_noSlash   = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)
-	v4_line_matches     = []*ipaddr.IPAddress{}
-	v6_line_matches     = []*ipaddr.IPAddress{}
 )
 
 func scanLine(args cliArgStruct, ret dataMatch) (dataMatch, bool) {
+	var v4_line_matches = []*ipaddr.IPAddress{}
+	var v6_line_matches = []*ipaddr.IPAddress{}
 
 	if args.V4 {
 		v4_line_matches = get_ipv4_addresses_from_line(ret.MatchLine, args.IPv4Regex)

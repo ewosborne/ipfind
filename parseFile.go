@@ -49,7 +49,7 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 
 	// scan each line
 	for scanner.Scan() {
-		idx++
+		idx++                                                                                   // first line is 1, not 0.
 		line := scanner.Text()                                                                  // get the line
 		dm, ok := scanLine(args, dataMatch{Idx: idx, MatchLine: line, Filename: file.Filename}) // get dataMatch items, one per line
 		if !ok {                                                                                // no matches on this line
