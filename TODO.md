@@ -3,7 +3,10 @@ TODO tab completion, however that works
 TODO turn it into an importable library
 TODO readme
 TODO goreleaser
+TODO with multiple IPs matching one line I see that line multiple times
 
+data/docs.txt:12:it contains other subnets such as 2001:db8::42/120 2001:db8:abcd:efff:1234/80 2001:db8::7/127
+data/docs.txt:12:it contains other subnets such as 2001:db8::42/120 2001:db8:abcd:efff:1234/80 2001:db8::7/127
 
 maybe call it 'grip'?  'go recognize IPs'?
 or just keep 'ipfind', it's fine.

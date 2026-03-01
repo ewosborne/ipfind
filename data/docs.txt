@@ -4,3 +4,14 @@ and it is contained by 10.0.0.0/8 and 10.1.0.0/16
 and it exactly matches 10.1.1.0/24
 and here's a match against 10.1.1.1/32
 and another with no masklen: 10.1.1.1
+
+here's a v6 equivalent
+
+
+this is a network 2001:db8::/48
+it contains other subnets such as 2001:db8::42/120 2001:db8:abcd:efff:1234/80 2001:db8::7/127
+and it is contained by 2001:db8::/44 and 2001:db8::/42
+and it exactly matches 2001:db8::/48
+and here's a match against 2001:db8::17/128
+and another with no masklen: 2001:db8::17
+2001:db8::/32

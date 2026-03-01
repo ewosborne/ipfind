@@ -46,8 +46,6 @@ func displayOutput(w io.Writer, args cliArgStruct, matchedLines []dataMatch, ipv
 		if it's Longest I need to find the longest masklen and print only that
 		by setting machedLines to whatever's in that trie.
 		otherwise print everything else.
-
-		could do this with a trie with embedded data but not doing that now.
 		*/
 
 		if args.Longest {
@@ -77,7 +75,7 @@ func displayOutput(w io.Writer, args cliArgStruct, matchedLines []dataMatch, ipv
 					}
 				}
 			}
-			fmt.Printf("longest is /%v\n", longest)
+			log.Debugf("longest is /%v\n", longest)
 			// TODO print only matches with that mask
 			for _, m := range matchedLines {
 				for _, ip := range m.MatchIPs {
