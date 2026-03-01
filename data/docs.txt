@@ -1,0 +1,4 @@
+this is a network 10.1.1.0/24
+it contains other subnets such as 10.1.1.0/30 10.1.1.0/27 10.1.1.128/25
+and it is contained by 10.0.0.0/8 and 10.1.0.0/16
+and it exactly matches 10.1.1.0/24
