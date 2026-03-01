@@ -5,6 +5,7 @@ TODO readme
 
 
 maybe call it 'grip'?  'go recognize IPs'?
+or 'ipf' like we have 'fzf'?
 
 ipf <ip range> -f/--file <ifile> 
 
