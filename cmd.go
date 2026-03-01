@@ -116,7 +116,7 @@ func get_inputFiles(args cliArgStruct) ([]inputFile, error) {
 	// build list of files or stdin
 	if len(args.InputFiles) == 0 {
 		log.Debug("reading from stdin")
-		iFiles = append(iFiles, inputFile{Filename: "os.Stdin"})
+		iFiles = append(iFiles, inputFile{IsStdin: true})
 	} else {
 		log.Debug("ifiles are", "ifiles", args.InputFiles)
 		// InputFiles is a slice. each element in the slice is either a file or a directory name.

@@ -2,11 +2,84 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
+
+func TestGetInputFiles(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		inputFiles []string
+		wantStdin  bool
+	}{
+		{
+			name:       "No files specified",
+			inputFiles: []string{},
+			wantStdin:  true,
+		},
+		{
+			name:       "File specified",
+			inputFiles: []string{"cmd.go"},
+			wantStdin:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			args := cliArgStruct{InputFiles: tt.inputFiles}
+			got, err := get_inputFiles(args)
+			if err != nil {
+				t.Fatalf("get_inputFiles() error = %v", err)
+			}
+			if len(got) == 0 {
+				t.Fatal("get_inputFiles() returned no files")
+			}
+			if got[0].IsStdin != tt.wantStdin {
+				t.Errorf("get_inputFiles()[0].IsStdin = %v, want %v", got[0].IsStdin, tt.wantStdin)
+			}
+		})
+	}
+}
+
+func TestIpcmd_Stdin(t *testing.T) {
+	// Not using t.Parallel() because it modifies os.Stdin
+	oldStdin := os.Stdin
+	defer func() { os.Stdin = oldStdin }()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdin = r
+
+	input := "1.1.1.1\n"
+	go func() {
+		w.Write([]byte(input))
+		w.Close()
+	}()
+
+	args := argMassage(cliArgStruct{
+		Ipstring: "1.1.1.1",
+		Exact:    true,
+		Slash:    false,
+	})
+
+	var out bytes.Buffer
+	err = ipcmd(&out, args)
+	if err != nil {
+		t.Fatalf("ipcmd() error = %v", err)
+	}
+
+	want := ":1:1.1.1.1\n"
+	if out.String() != want {
+		t.Errorf("ipcmd() output = %q, want %q", out.String(), want)
+	}
+}
 
 func TestDisplayOutput(t *testing.T) {
 	t.Parallel()
