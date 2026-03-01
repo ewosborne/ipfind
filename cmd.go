@@ -51,35 +51,45 @@ func displayOutput(w io.Writer, args cliArgStruct, matchedLines []dataMatch, ipv
 		*/
 
 		if args.Longest {
+			tmp := []dataMatch{}
 			// find longest mask in the trie
-			if args.Longest {
-				var longest int
-				if ipv4Trie.Size() > 0 {
+			var longest int
+			if ipv4Trie.Size() > 0 {
+				iter := ipv4Trie.BlockSizeNodeIterator(true)
+				//fmt.Printf("%v\n", ipv4Trie)
+				for iter.HasNext() {
+					node := iter.Next()
+					addr := node.GetKey()
+					if addr.IsPrefixed() {
+						longest = max(longest, addr.GetNetworkPrefixLen().Len())
 
-					iter := ipv4Trie.BlockSizeNodeIterator(true)
-					fmt.Printf("%v\n", ipv4Trie)
-					for iter.HasNext() {
-						node := iter.Next()
-						addr := node.GetKey()
-						if addr.IsPrefixed() {
-							longest = max(longest, addr.GetNetworkPrefixLen().Len())
-
-						}
 					}
 				}
-				fmt.Printf("longest is /%v\n", longest)
-				// TODO now need to find prefixes with that length in the trie
-			}
-		}
+			} else {
+				iter := ipv6Trie.BlockSizeNodeIterator(true)
+				//fmt.Printf("%v\n", ipv4Trie)
+				for iter.HasNext() {
+					node := iter.Next()
+					addr := node.GetKey()
+					if addr.IsPrefixed() {
+						longest = max(longest, addr.GetNetworkPrefixLen().Len())
 
-		// if args.Longest {
-		// 	if ipv4Trie.Size() > 0 {
-		// 		fmt.Fprintln(w, "IPv4 LPM", ipv4Trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
-		// 	}
-		// 	if ipv6Trie.Size() > 0 {
-		// 		fmt.Fprintln(w, "IPv6 LPM", ipv6Trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()))
-		// 	}
-		// }
+					}
+				}
+			}
+			fmt.Printf("longest is /%v\n", longest)
+			// TODO print only matches with that mask
+			for _, m := range matchedLines {
+				for _, ip := range m.MatchIPs {
+					if ip.GetNetworkPrefixLen().Len() == longest {
+						//log.Debugf("%v:%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine, m.MatchIPs)
+						//fmt.Fprintf(w, "%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine)
+						tmp = append(tmp, m)
+					}
+				}
+			}
+			matchedLines = tmp
+		}
 		for _, m := range matchedLines {
 			log.Debugf("%v:%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine, m.MatchIPs)
 			fmt.Fprintf(w, "%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine)
