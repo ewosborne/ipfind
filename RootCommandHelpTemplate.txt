@@ -1,1 +1,7 @@
 This is the start of RootCommandHelpTemplate.txt
+EXAMPLES
+  Here are some examples.
+
+
+WEBSITE
+  Here's the website.
