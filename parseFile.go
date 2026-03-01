@@ -106,7 +106,7 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 					}
 					//break NextLine // TODO do I want to break here?  or do the whole line?
 				}
-			case args.Contains:
+			case args.Contains, args.Longest:
 				if ip.Contains(args.Ipaddr) {
 					ret = append(ret, line)
 					if ip.IsIPv4() {
@@ -119,15 +119,15 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 					//break NextLine // TODO same question as Subnet.  when do I want to break?
 				}
 
-			// TODO: I need to capture maches in ret, not just tries, like everything else.
-			case args.Longest:
-				if ip.IsIPv4() {
-					v4_trie.Add(ip.ToIPv4())
-				}
+				// TODO: I need to capture maches in ret, not just tries, like everything else.
+				// case args.Longest:
+				// 	if ip.IsIPv4() {
+				// 		v4_trie.Add(ip.ToIPv4())
+				// 	}
 
-				if ip.IsIPv6() {
-					v6_trie.Add(ip.ToIPv6())
-				}
+				// 	if ip.IsIPv6() {
+				// 		v6_trie.Add(ip.ToIPv6())
+				// 	}
 			}
 		}
 	}

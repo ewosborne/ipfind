@@ -42,6 +42,36 @@ func displayOutput(w io.Writer, args cliArgStruct, matchedLines []dataMatch, ipv
 			fmt.Fprintln(w, ipv6Trie)
 		}
 	} else { // default mode is per line
+		/* OK
+		if it's Longest I need to find the longest masklen and print only that
+		by setting machedLines to whatever's in that trie.
+		otherwise print everything else.
+
+		could do this with a trie with embedded data but not doing that now.
+		*/
+
+		if args.Longest {
+			// find longest mask in the trie
+			if args.Longest {
+				var longest int
+				if ipv4Trie.Size() > 0 {
+
+					iter := ipv4Trie.BlockSizeNodeIterator(true)
+					fmt.Printf("%v\n", ipv4Trie)
+					for iter.HasNext() {
+						node := iter.Next()
+						addr := node.GetKey()
+						if addr.IsPrefixed() {
+							longest = max(longest, addr.GetNetworkPrefixLen().Len())
+
+						}
+					}
+				}
+				fmt.Printf("longest is /%v\n", longest)
+				// TODO now need to find prefixes with that length in the trie
+			}
+		}
+
 		// if args.Longest {
 		// 	if ipv4Trie.Size() > 0 {
 		// 		fmt.Fprintln(w, "IPv4 LPM", ipv4Trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
