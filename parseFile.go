@@ -78,7 +78,7 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 	for _, line := range scannedFile {
 		log.Debug("considering", "line", line)
 
-	NextLine:
+		//NextLine:
 		for _, ip := range line.MatchIPs {
 			switch {
 			case args.Exact:
@@ -91,7 +91,7 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 					if ip.IsIPv6() {
 						v6_trie.Add(ip.ToIPv6())
 					}
-					break NextLine
+					//break NextLine
 				}
 
 			case args.Subnet:
@@ -104,7 +104,7 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 					if ip.IsIPv6() {
 						v6_trie.Add(ip.ToIPv6())
 					}
-					break NextLine // TODO do I want to break here?  or do the whole line?
+					//break NextLine // TODO do I want to break here?  or do the whole line?
 				}
 			case args.Contains:
 				if ip.Contains(args.Ipaddr) {
@@ -116,7 +116,7 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 					if ip.IsIPv6() {
 						v6_trie.Add(ip.ToIPv6())
 					}
-					break NextLine // TODO same question as Subnet.  when do I want to break?
+					//break NextLine // TODO same question as Subnet.  when do I want to break?
 				}
 
 			case args.Longest:

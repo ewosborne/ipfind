@@ -32,15 +32,13 @@ func scanLine(args cliArgStruct, ret dataMatch) (dataMatch, bool) {
 	}
 
 	// note well that this is _regex matches_, not _criteria matches_.
+	//  also, line_matches should never have both v4 and v6, this is just for completeness
+	//  and convenience
 	line_matches := slices.Concat(v4_line_matches, v6_line_matches)
 	if len(line_matches) == 0 {
 		return ret, false
 	} else {
-
-		// TODO wtf why isn't this set?
 		ret.MatchIPs = line_matches
-		//ret.MatchIPs = slices.Clone(line_matches)
-		//copy(ret.MatchIPs, line_matches)
 	}
 
 	return ret, true

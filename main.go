@@ -21,7 +21,8 @@ func main() {
 		UseShortOptionHandling: true,
 		EnableShellCompletion:  true,
 		Name:                   "ipfind",
-		Usage:                  "find this ip",
+		Usage: `Search for networks matching, containing, or contained 
+  in a specified IP address.`,
 
 		Arguments: []cli.Argument{
 			&cli.StringArg{
@@ -29,9 +30,7 @@ func main() {
 				Destination: &cliArgs.Ipstring,
 			},
 			&cli.StringArgs{
-				Name: "file",
-				//Usage:       "input file",
-				//Aliases:     []string{"f"},
+				Name:        "file",
 				Min:         0,
 				Max:         -1,
 				Destination: &cliArgs.InputFiles,
@@ -41,18 +40,18 @@ func main() {
 			&cli.BoolFlag{
 				Name:        "debug",
 				Aliases:     []string{"d"},
-				Usage:       "print debug output",
+				Usage:       "Debug output",
 				Destination: &cliArgs.Debug,
 			},
 			&cli.BoolWithInverseFlag{
 				Name:        "canonize",
-				Usage:       "canonize to logical mask",
+				Usage:       `Canonize input to match mask`,
 				Destination: &cliArgs.Canonize,
 				Value:       true,
 			},
 			&cli.BoolWithInverseFlag{
 				Name:        "slash",
-				Usage:       "require slash to recognize address from input files",
+				Usage:       `Require a subnet mask to recognize a host`,
 				Destination: &cliArgs.Slash,
 				Value:       true,
 			},
@@ -64,7 +63,7 @@ func main() {
 						&cli.BoolFlag{
 							Name:        "json",
 							Aliases:     []string{"j"},
-							Usage:       "json output",
+							Usage:       "JSON output",
 							Destination: &cliArgs.Json,
 						},
 					},
@@ -72,7 +71,7 @@ func main() {
 						&cli.BoolFlag{
 							Name:        "trie",
 							Aliases:     []string{"t"},
-							Usage:       "print trie",
+							Usage:       "Trie",
 							Destination: &cliArgs.Trie,
 						},
 					},
@@ -83,15 +82,16 @@ func main() {
 					{
 						&cli.BoolFlag{
 							Name:        "exact",
-							Usage:       "exact match",
+							Usage:       "Find exact network & subnet matches",
 							Aliases:     []string{"e"},
 							Destination: &cliArgs.Exact,
 						},
 					},
 					{
 						&cli.BoolFlag{
-							Name:        "longest",
-							Usage:       "longest match",
+							Name: "longest",
+							Usage: `Find all networks with the longest match 
+	 which contains the given network`,
 							Aliases:     []string{"l"},
 							Destination: &cliArgs.Longest,
 						},
@@ -99,7 +99,7 @@ func main() {
 					{
 						&cli.BoolFlag{
 							Name:        "subnets-of",
-							Usage:       "find all networks which are subnets of the specified network",
+							Usage:       "Find all networks which are subnets of the specified network",
 							Aliases:     []string{"s"},
 							Destination: &cliArgs.Subnet,
 						},
@@ -107,7 +107,7 @@ func main() {
 					{
 						&cli.BoolFlag{
 							Name:        "contains",
-							Usage:       "find all networks which contain the specified network",
+							Usage:       "Find all networks which contain the specified network",
 							Aliases:     []string{"c"},
 							Destination: &cliArgs.Contains,
 						},

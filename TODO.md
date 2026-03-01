@@ -2,6 +2,7 @@ TODO handle err and nil, don't be lazy. take AI idiomatic suggestions
 TODO tab completion, however that works
 TODO turn it into an importable library
 TODO readme
+TODO goreleaser
 
 
 maybe call it 'grip'?  'go recognize IPs'?
