@@ -64,10 +64,22 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 		return fmt.Errorf("failed to get input files: %w", err)
 	}
 
-	// walk stuff.  this needs a rewrite with channels and a worker pool.
+	// walk stuff.  this needs a rewrite with channels and a worker pool
 	for _, i := range iFiles {
 		//fmt.Printf("need to process file %v\n", i.Filename)
 		// launch a goroutine per file maybe?  for now just do it in order
+
+		if i.IsStdin {
+			i.Scanner = bufio.NewScanner(os.Stdin)
+		} else {
+			ifh, err := os.Open(i.Filename)
+			if err != nil {
+				panic("lazy exit here")
+			}
+			defer ifh.Close()
+			i.Scanner = bufio.NewScanner(ifh)
+
+		}
 		matchedLines, ipv4Trie, ipv6Trie := process_single_file(args, i)
 		displayOutput(w, args, matchedLines, ipv4Trie, ipv6Trie)
 
@@ -104,7 +116,7 @@ func get_inputFiles(args cliArgStruct) ([]inputFile, error) {
 	// build list of files or stdin
 	if len(args.InputFiles) == 0 {
 		log.Debug("reading from stdin")
-		iFiles = append(iFiles, inputFile{Filename: "os.Stdin", IsStdin: true, Scanner: bufio.NewScanner(os.Stdin)})
+		iFiles = append(iFiles, inputFile{Filename: "os.Stdin"})
 	} else {
 		log.Debug("ifiles are", "ifiles", args.InputFiles)
 		// InputFiles is a slice. each element in the slice is either a file or a directory name.
@@ -117,11 +129,7 @@ func get_inputFiles(args cliArgStruct) ([]inputFile, error) {
 
 		log.Debug("files to walk are", "file", files)
 		for _, file := range files {
-			tmp, err := os.Open(file)
-			if err != nil {
-				return nil, fmt.Errorf("failed to open file %s: %w", file, err)
-			}
-			iFiles = append(iFiles, inputFile{IsStdin: false, Filename: file, Scanner: bufio.NewScanner(tmp)})
+			iFiles = append(iFiles, inputFile{IsStdin: false, Filename: file})
 
 		}
 	}
