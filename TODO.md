@@ -5,9 +5,7 @@ TODO readme
 
 
 maybe call it 'grip'?  'go recognize IPs'?
-or 'ipf' like we have 'fzf'?
-
-ipf <ip range> -f/--file <ifile> 
+or just keep 'ipfind', it's fine.
 
 idea: given a network range and some input, match the network range against the input
 
