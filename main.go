@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"log"
 	"os"
@@ -9,9 +10,16 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+//go:embed RootCommandHelpTemplate.txt
+var h string
+
 func main() {
 
 	var cliArgs cliArgStruct
+
+	cli.RootCommandHelpTemplate = fmt.Sprintf(`%s
+%s
+`, cli.RootCommandHelpTemplate, h)
 
 	cli.VersionPrinter = func(cmd *cli.Command) {
 		fmt.Printf("version=%s\n", cmd.Root().Version)
