@@ -119,6 +119,7 @@ func process_single_file(args cliArgStruct, file inputFile) ([]dataMatch, ipaddr
 					//break NextLine // TODO same question as Subnet.  when do I want to break?
 				}
 
+			// TODO: I need to capture maches in ret, not just tries, like everything else.
 			case args.Longest:
 				if ip.IsIPv4() {
 					v4_trie.Add(ip.ToIPv4())

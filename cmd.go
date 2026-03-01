@@ -42,14 +42,14 @@ func displayOutput(w io.Writer, args cliArgStruct, matchedLines []dataMatch, ipv
 			fmt.Fprintln(w, ipv6Trie)
 		}
 	} else { // default mode is per line
-		if args.Longest {
-			if ipv4Trie.Size() > 0 {
-				fmt.Fprintln(w, "IPv4 LPM", ipv4Trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
-			}
-			if ipv6Trie.Size() > 0 {
-				fmt.Fprintln(w, "IPv6 LPM", ipv6Trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()))
-			}
-		}
+		// if args.Longest {
+		// 	if ipv4Trie.Size() > 0 {
+		// 		fmt.Fprintln(w, "IPv4 LPM", ipv4Trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()))
+		// 	}
+		// 	if ipv6Trie.Size() > 0 {
+		// 		fmt.Fprintln(w, "IPv6 LPM", ipv6Trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()))
+		// 	}
+		// }
 		for _, m := range matchedLines {
 			log.Debugf("%v:%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine, m.MatchIPs)
 			fmt.Fprintf(w, "%v:%v:%v\n", m.Filename, m.Idx, m.MatchLine)

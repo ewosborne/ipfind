@@ -1,7 +1,7 @@
 This is the start of RootCommandHelpTemplate.txt
+
 EXAMPLES
-  Here are some examples.
-
-
+ These examples use `data/azure.json` which is a snapshot of [Azure IP ranges](https://www.microsoft.com/en-us/download/details.aspx?id=56519) from early 2026.
+ 
 WEBSITE
   Here's the website.
