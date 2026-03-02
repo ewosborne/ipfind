@@ -54,16 +54,13 @@ func newipcmd(w io.Writer, args cliArgStruct) error {
 	// at this point newInputFiles is a list of names or stdin
 	for _, f := range newInputFiles {
 
-		// at this point the line has been read in and has string matches, idx, line
-		// so we're done reading in the file
 		fLines, err := readSingleFile(args, f)
 		if err != nil {
 			log.Fatal("error opening %v", f)
 		}
 		log.Debug("Read in %+v from %v", fLines, f.Filename)
 
-		// at this point fLines contains []readLine, for each line in the file I just read
-		//fmt.Printf("ARGS are %+v %+v\n", args, args.Ipaddr)
+		// at this point fLines is []*readLine, for each line in the file I just read
 
 		for _, fLine := range fLines {
 			switch {
@@ -71,32 +68,34 @@ func newipcmd(w io.Writer, args cliArgStruct) error {
 				//log.Print("need to match exactly")
 				//log.Printf("working on line %v", fLine)
 				for _, ip := range fLine.MatchingIPStrings {
-					ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
-					//fmt.Printf("comparing %v %v\n", args.Ipaddr, ipObj)
-					if ipObj.Equal(args.Ipaddr) {
-						//fmt.Println("MATCH!")
-						fLine.IsMatch = true // TODO I think I need to pass a pointer here, not sure I understand why
-						// TODO break out of the line early, we found a match
+					if !fLine.IsMatch {
+						ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
+						//fmt.Printf("comparing %v %v\n", args.Ipaddr, ipObj)
+						if ipObj.Equal(args.Ipaddr) {
+							fLine.IsMatch = true
+						}
 					}
 				}
 			case args.Subnet:
 				log.Debug("need to match subnet")
 				//log.Printf("working on line %v", fLine)
 				for _, ip := range fLine.MatchingIPStrings {
-					ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
-					if args.Ipaddr.Contains(ipObj) {
-						fLine.IsMatch = true
-						// TODO break out of the line early, we found a match
+					if !fLine.IsMatch {
+						ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
+						if args.Ipaddr.Contains(ipObj) {
+							fLine.IsMatch = true
+						}
 					}
 				}
 			case args.Contains:
 				log.Print("need to match contains")
 				log.Printf("working on line %v", fLine)
 				for _, ip := range fLine.MatchingIPStrings {
-					ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
-					if ipObj.Contains(args.Ipaddr) {
-						fLine.IsMatch = true
-						// TODO break out of the line early, we found a match
+					if !fLine.IsMatch {
+						ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
+						if ipObj.Contains(args.Ipaddr) {
+							fLine.IsMatch = true
+						}
 					}
 				}
 			case args.Longest:
