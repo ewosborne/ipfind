@@ -67,6 +67,7 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 	// at this point inputFiles is a list of names or stdin
 	// TODO: for LPM, do I want to check LPM across all files together, or in each one?
 	//  hrmm.
+	// maybe all of it?
 	for _, f := range inputFiles {
 		matchingLines := getMatchingLines(args, f)
 		err := doReports(matchingLines, args, w)
@@ -163,6 +164,7 @@ func getMatchingLines(args cliArgStruct, f inputFile) []*readLine {
 
 	for _, fLine := range fLines {
 		switch {
+
 		case args.Exact:
 			//log.Print("need to match exactly")
 			//log.Printf("working on line %v", fLine)
@@ -179,6 +181,9 @@ func getMatchingLines(args cliArgStruct, f inputFile) []*readLine {
 			//log.Printf("working on line %v", fLine)
 			for _, ip := range fLine.IPRegexMatches {
 				ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
+				// if ipObj.GetPrefixLen().Len() > 21 && ipObj.GetPrefixLen().Len() < 27 {
+				// 	continue
+				// }
 				if args.Ipaddr.Contains(ipObj) {
 					fLine.IsMatch = true
 					fLine.ConditionMatches = append(fLine.ConditionMatches, ip)

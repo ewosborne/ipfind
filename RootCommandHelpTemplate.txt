@@ -2,6 +2,8 @@ USAGE
  ipfind's purpose is to find IP addresses in a file. Rather than forcing you to throw ugly strings, globs, or regexps at a search, it understands what IP addresses are and how to look for them in a file. IPv4 and IPv6 are both fully supported.
 
 
+ ipfind takes one mandatory argument, the IP address or network to search for, and one optional argument, a list of file to search. If no files are specified then ipfind reads from stdin.
+
  ipfind has four search modes and three output modes.  
  Its search modes are exact, longest, subnet-of, and contains. These are mutually exclusive and are passed in with --exact/-e, -l/--longest, -s/--subnet-of, and -c/--contains.
  The default is longest.
@@ -12,8 +14,14 @@ USAGE
  Any search mode can be used with any output mode.
 
 
+
 EXAMPLES
  These examples use `data/docs.txt`.
+
+% ipfind 10.1.1.1/32 data/docs.txt -e
+data/docs.txt:5:and here's a match against 10.1.1.1/32
+
+
 
 
 WEBSITE
