@@ -53,63 +53,7 @@ func newipcmd(w io.Writer, args cliArgStruct) error {
 
 	// at this point newInputFiles is a list of names or stdin
 	for _, f := range newInputFiles {
-
-		fLines, err := readSingleFile(args, f)
-		if err != nil {
-			log.Fatal("error opening %v", f)
-		}
-		log.Debug("Read in %+v from %v", fLines, f.Filename)
-
-		// at this point fLines is []*readLine, for each line in the file I just read
-
-		for _, fLine := range fLines {
-			switch {
-			case args.Exact:
-				//log.Print("need to match exactly")
-				//log.Printf("working on line %v", fLine)
-				for _, ip := range fLine.MatchingIPStrings {
-					if !fLine.IsMatch {
-						ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
-						//fmt.Printf("comparing %v %v\n", args.Ipaddr, ipObj)
-						if ipObj.Equal(args.Ipaddr) {
-							fLine.IsMatch = true
-						}
-					}
-				}
-			case args.Subnet:
-				log.Debug("need to match subnet")
-				//log.Printf("working on line %v", fLine)
-				for _, ip := range fLine.MatchingIPStrings {
-					if !fLine.IsMatch {
-						ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
-						if args.Ipaddr.Contains(ipObj) {
-							fLine.IsMatch = true
-						}
-					}
-				}
-			case args.Contains:
-				log.Print("need to match contains")
-				log.Printf("working on line %v", fLine)
-				for _, ip := range fLine.MatchingIPStrings {
-					if !fLine.IsMatch {
-						ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
-						if ipObj.Contains(args.Ipaddr) {
-							fLine.IsMatch = true
-						}
-					}
-				}
-			case args.Longest:
-				log.Print("need to match longest")
-				// TODO
-			}
-		}
-
-		var matchingLines = []*readLine{}
-		for _, fLine := range fLines {
-			if fLine.IsMatch {
-				matchingLines = append(matchingLines, fLine)
-			}
-		}
+		matchingLines := getMatchingLines(args, f)
 
 		// now do some reporting
 		switch {
@@ -129,7 +73,7 @@ func newipcmd(w io.Writer, args cliArgStruct) error {
 			//  also need this for LPM I think.
 		default:
 			log.Debug("need to log text")
-			for _, fLine := range fLines {
+			for _, fLine := range matchingLines {
 				if fLine.IsMatch {
 					fmt.Fprintf(w, "%v:%v\n", fLine.Idx, fLine.Line)
 				}
@@ -140,6 +84,69 @@ func newipcmd(w io.Writer, args cliArgStruct) error {
 	}
 
 	return nil // todo
+}
+
+func getMatchingLines(args cliArgStruct, f newInputFile) []*readLine {
+
+	fLines, err := readSingleFile(args, f)
+	if err != nil {
+		log.Fatal("error opening %v", f)
+	}
+	log.Debug("Read in %+v from %v", fLines, f.Filename)
+
+	// at this point fLines is []*readLine, for each line in the file I just read
+
+	for _, fLine := range fLines {
+		switch {
+		case args.Exact:
+			//log.Print("need to match exactly")
+			//log.Printf("working on line %v", fLine)
+			for _, ip := range fLine.MatchingIPStrings {
+				if !fLine.IsMatch {
+					ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
+					//fmt.Printf("comparing %v %v\n", args.Ipaddr, ipObj)
+					if ipObj.Equal(args.Ipaddr) {
+						fLine.IsMatch = true
+					}
+				}
+			}
+		case args.Subnet:
+			log.Debug("need to match subnet")
+			//log.Printf("working on line %v", fLine)
+			for _, ip := range fLine.MatchingIPStrings {
+				if !fLine.IsMatch {
+					ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
+					if args.Ipaddr.Contains(ipObj) {
+						fLine.IsMatch = true
+					}
+				}
+			}
+		case args.Contains:
+			log.Debug("need to match contains")
+			//log.Debugf("working on line %v", fLine)
+			for _, ip := range fLine.MatchingIPStrings {
+				if !fLine.IsMatch {
+					ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
+					if ipObj.Contains(args.Ipaddr) {
+						fLine.IsMatch = true
+					}
+				}
+			}
+		case args.Longest:
+			log.Fatal("longest match not implemented")
+			// TODO
+		}
+	}
+
+	var matchingLines = []*readLine{}
+	for _, fLine := range fLines {
+		if fLine.IsMatch {
+			matchingLines = append(matchingLines, fLine)
+		}
+	}
+
+	return matchingLines
+
 }
 
 func readSingleFile(args cliArgStruct, fileName newInputFile) ([]*readLine, error) {
@@ -188,10 +195,6 @@ func get_ip_addresses_from_line(ipre *regexp.Regexp, line string) []string {
 	return ipre.FindAllString(line, -1)
 }
 
-// TODO can I do this part in parallel?  ipv6 in particular is expensive.
-// syncMap maybe? ick.
-//
-//	channels?
 func get_ipv4_addresses_from_line(line string, ipv4Regex *regexp.Regexp) []string {
 	return get_ip_addresses_from_line(ipv4Regex, line)
 }
