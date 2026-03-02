@@ -37,6 +37,12 @@ type readLine struct {
 	IsMatch          bool // default is false
 }
 
+type readLineExternal struct {
+	Filename string
+	Idx      int
+	Line     string
+}
+
 func ipcmd(w io.Writer, args cliArgStruct) error {
 
 	// null stuff
@@ -72,16 +78,33 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 }
 
 func doReports(matchingLines []*readLine, args cliArgStruct, w io.Writer) error {
+	newML := []*readLineExternal{}
+
+	if !args.Debug {
+		for _, tmp := range matchingLines {
+			newML = append(newML, &readLineExternal{Idx: tmp.Idx, Filename: tmp.Filename, Line: tmp.Line})
+		}
+	}
+
+	var b []byte
+	var err error
 	switch {
 	case args.Json:
-		log.Debug("TODO need to log JSON")
-		b, err := json.MarshalIndent(matchingLines, "", "  ")
-
-		if err != nil {
-			return err
+		if args.Debug {
+			b, err = json.MarshalIndent(matchingLines, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(w, string(b))
+			fmt.Fprint(w, "\n")
+		} else {
+			b, err = json.MarshalIndent(newML, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(w, string(b))
+			fmt.Fprint(w, "\n")
 		}
-		fmt.Fprint(w, string(b))
-		fmt.Fprint(w, "\n")
 
 	case args.Trie:
 		//  also need tries for LPM I think.
