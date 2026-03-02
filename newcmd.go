@@ -56,38 +56,45 @@ func newipcmd(w io.Writer, args cliArgStruct) error {
 	}
 
 	// at this point newInputFiles is a list of names or stdin
+	// TODO: for LPM, do I want to check LPM across all files together, or in each one?
+	//  hrmm.
 	for _, f := range newInputFiles {
 		matchingLines := getMatchingLines(args, f)
+		err := doReports(matchingLines, args, w)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+	return nil // todo
+}
 
-		// now do some reporting
-		switch {
-		case args.Json:
-			log.Debug("TODO need to log JSON")
-			b, err := json.MarshalIndent(matchingLines, "", "  ")
+func doReports(matchingLines []*readLine, args cliArgStruct, w io.Writer) error {
+	// now do some reporting
+	switch {
+	case args.Json:
+		log.Debug("TODO need to log JSON")
+		b, err := json.MarshalIndent(matchingLines, "", "  ")
 
-			if err != nil {
-				log.Error(err)
-			}
-			fmt.Fprint(w, string(b))
-			fmt.Fprint(w, "\n")
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(w, string(b))
+		fmt.Fprint(w, "\n")
 
-		case args.Trie:
-			log.Print("TODO need to log trie")
-			// create tries and then print them
-			//  also need this for LPM I think.
-		default:
-			log.Debug("need to log text")
-			for _, fLine := range matchingLines {
-				if fLine.IsMatch {
-					fmt.Fprintf(w, "%v:%v:%v\n", fLine.Filename, fLine.Idx, fLine.Line)
-				}
+	case args.Trie:
+		log.Print("TODO need to log trie")
+		// create tries and then print them
+		//  also need this for LPM I think.
+	default:
+		log.Debug("need to log text")
+		for _, fLine := range matchingLines {
+			if fLine.IsMatch {
+				fmt.Fprintf(w, "%v:%v:%v\n", fLine.Filename, fLine.Idx, fLine.Line)
 			}
 		}
-
-		// TODO
 	}
-
-	return nil // todo
+	// TODO
+	return nil
 }
 
 func getMatchingLines(args cliArgStruct, f newInputFile) []*readLine {
