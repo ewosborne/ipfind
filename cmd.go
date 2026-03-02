@@ -1,5 +1,10 @@
 package main
 
+import (
+	"io/fs"
+	"path/filepath"
+)
+
 /* this is the main command loop.  it figures out what files need to be parsed and calls
    parseFile for each one.  concurrency-ready but 1 worker to start.
 */
@@ -111,25 +116,25 @@ package main
 // } // func ipcmd
 
 // v   keep this function
-// func getFilesFromArgs(inputFiles []string) ([]string, error) {
-// 	var ret []string
-// 	for _, ifile := range inputFiles {
-// 		err := filepath.WalkDir(ifile, func(path string, d fs.DirEntry, err error) error {
-// 			if err != nil {
-// 				return err
-// 			}
+func getFilesFromArgs(inputFiles []string) ([]string, error) {
+	var ret []string
+	for _, ifile := range inputFiles {
+		err := filepath.WalkDir(ifile, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
 
-// 			if !d.IsDir() {
-// 				ret = append(ret, path)
-// 			}
-// 			return nil
-// 		})
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 	}
-// 	return ret, nil
-// }
+			if !d.IsDir() {
+				ret = append(ret, path)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ret, nil
+}
 
 // func get_inputFiles(args cliArgStruct) ([]inputFile, error) {
 // 	// returns a list of input files

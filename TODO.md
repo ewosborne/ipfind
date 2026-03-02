@@ -3,6 +3,7 @@ TODO tab completion, however that works
 TODO turn it into an importable library
 TODO readme
 TODO goreleaser
+TODO test cases again
 
 maybe call it 'grip'?  'go recognize IPs'?
 or just keep 'ipfind', it's fine.

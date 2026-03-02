@@ -27,6 +27,7 @@ type newInputFile struct {
 }
 
 type readLine struct {
+	Filename          string
 	Idx               int
 	Line              string
 	MatchingIPStrings []string
@@ -45,8 +46,11 @@ func newipcmd(w io.Writer, args cliArgStruct) error {
 		log.Debug("need to read in os.Stdin")
 		newInputFiles = append(newInputFiles, newInputFile{IsStdin: true})
 	default:
-		for _, f := range args.InputFiles {
-			log.Debug("need to read in", "filename", f)
+		tmp, err := getFilesFromArgs(args.InputFiles)
+		if err != nil {
+			log.Fatal("error", err)
+		}
+		for _, f := range tmp {
 			newInputFiles = append(newInputFiles, newInputFile{IsStdin: false, Filename: f})
 		}
 	}
@@ -75,7 +79,7 @@ func newipcmd(w io.Writer, args cliArgStruct) error {
 			log.Debug("need to log text")
 			for _, fLine := range matchingLines {
 				if fLine.IsMatch {
-					fmt.Fprintf(w, "%v:%v\n", fLine.Idx, fLine.Line)
+					fmt.Fprintf(w, "%v:%v:%v\n", fLine.Filename, fLine.Idx, fLine.Line)
 				}
 			}
 		}
@@ -172,7 +176,7 @@ func readSingleFile(args cliArgStruct, fileName newInputFile) ([]*readLine, erro
 	for fileName.Scanner.Scan() {
 		idx++
 		line := fileName.Scanner.Text()
-		rl := readLine{Idx: idx, Line: line}
+		rl := readLine{Idx: idx, Line: line, Filename: fileName.Filename}
 
 		if len(line) == 0 {
 			continue // optimization for blank lines.
