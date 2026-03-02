@@ -176,8 +176,8 @@ func getMatchingLines(args cliArgStruct, f inputFile) []*readLine {
 					fLine.ConditionMatches = append(fLine.ConditionMatches, ip)
 				}
 			}
-		case args.Subnet:
-			log.Debug("need to match subnet")
+		case args.Subnet, args.Longest:
+			log.Debug("need to match subnet or longest")
 			//log.Printf("working on line %v", fLine)
 			for _, ip := range fLine.IPRegexMatches {
 				ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
@@ -199,16 +199,37 @@ func getMatchingLines(args cliArgStruct, f inputFile) []*readLine {
 					fLine.ConditionMatches = append(fLine.ConditionMatches, ip)
 				}
 			}
-		case args.Longest:
-			log.Fatal("longest match not implemented")
-			// TODO
+			//case args.Longest:
+			// nothing to do yet
+			//   just run the subnets-of logic and get the list, then walk for longest mask
+		}
+	}
+
+	// find longest match
+	// it's gotta be smarter to do this elsewhere
+	// but let's see if this works
+	var lsm int
+	if args.Longest {
+		//var lsm int
+		for _, fLine := range fLines {
+			for _, m := range fLine.IPRegexMatches {
+				lsm = max(lsm, ipaddr.NewIPAddressString(m).GetAddress().GetPrefixLen().Len())
+			}
 		}
 	}
 
 	var matchingLines = []*readLine{}
 	for _, fLine := range fLines {
 		if fLine.IsMatch {
-			matchingLines = append(matchingLines, fLine)
+			if !args.Longest {
+				matchingLines = append(matchingLines, fLine)
+			} else { // args.Longest
+				for _, m := range fLine.IPRegexMatches {
+					if lsm == ipaddr.NewIPAddressString(m).GetAddress().GetPrefixLen().Len() {
+						matchingLines = append(matchingLines, fLine)
+					}
+				}
+			}
 		}
 	}
 
