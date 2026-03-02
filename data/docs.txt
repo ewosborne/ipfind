@@ -16,4 +16,5 @@ and it is contained by 2001:db8::/44 and 2001:db8::/42
 and it exactly matches 2001:db8::/48
 and here's a match against 2001:db8::17/128
 and another with no masklen: 2001:db8::17
-2001:db8::/32
+and here's a weird one 2001:db8::49/48
+
