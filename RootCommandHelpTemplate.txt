@@ -1,7 +1,20 @@
-This is the start of RootCommandHelpTemplate.txt
+USAGE
+ ipfind's purpose is to find IP addresses in a file. Rather than forcing you to throw ugly strings, globs, or regexps at a search, it understands what IP addresses are and how to look for them in a file. IPv4 and IPv6 are both fully supported.
+
+
+ ipfind has four search modes and three output modes.  
+ Its search modes are exact, longest, subnet-of, and contains. These are mutually exclusive and are passed in with --exact/-e, -l/--longest, -s/--subnet-of, and -c/--contains.
+ The default is longest.
+
+ Its output modes are text, json, and trie.
+ The default is text.
+
+ Any search mode can be used with any output mode.
+
 
 EXAMPLES
- These examples use `data/azure.json` which is a snapshot of [Azure IP ranges](https://www.microsoft.com/en-us/download/details.aspx?id=56519) from early 2026.
- 
+ These examples use `data/docs.txt`.
+
+
 WEBSITE
   Here's the website.
