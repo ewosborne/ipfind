@@ -218,7 +218,6 @@ func readSingleFile(args cliArgStruct, fileName inputFile) ([]*readLine, error) 
 		}
 
 		// now find all ipv4 regex matches and ipv6 regex matches from the line
-		// TODO: only check the regex that
 		if args.IsIPv4 {
 			rl.IPRegexMatches = get_ipv4_addresses_from_line(rl.Line, args.IPv4Regex)
 		} else {
