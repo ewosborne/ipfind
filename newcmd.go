@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -27,11 +29,12 @@ type inputFile struct {
 }
 
 type readLine struct {
-	Filename          string
-	Idx               int
-	Line              string
-	MatchingIPStrings []string
-	IsMatch           bool // default is false
+	Filename         string
+	Idx              int
+	Line             string
+	IPRegexMatches   []string
+	ConditionMatches []string
+	IsMatch          bool // default is false
 }
 
 func ipcmd(w io.Writer, args cliArgStruct) error {
@@ -109,14 +112,14 @@ func getIPTries(args cliArgStruct, matchingLines []*readLine) (ipaddr.IPv4Addres
 	switch {
 	case args.IsIPv4:
 		for _, match := range matchingLines {
-			for _, line := range match.MatchingIPStrings {
+			for _, line := range match.ConditionMatches {
 				IPv4Trie.Add(ipaddr.NewIPAddressString(line).GetAddress().ToIPv4())
 			}
 		}
 
 	case args.IsIPv6:
 		for _, match := range matchingLines {
-			for _, line := range match.MatchingIPStrings {
+			for _, line := range match.ConditionMatches {
 				IPv6Trie.Add(ipaddr.NewIPAddressString(line).GetAddress().ToIPv6())
 			}
 		}
@@ -140,35 +143,32 @@ func getMatchingLines(args cliArgStruct, f inputFile) []*readLine {
 		case args.Exact:
 			//log.Print("need to match exactly")
 			//log.Printf("working on line %v", fLine)
-			for _, ip := range fLine.MatchingIPStrings {
-				if !fLine.IsMatch {
-					ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
-					//fmt.Printf("comparing %v %v\n", args.Ipaddr, ipObj)
-					if ipObj.Equal(args.Ipaddr) {
-						fLine.IsMatch = true
-					}
+			for _, ip := range fLine.IPRegexMatches {
+				ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
+				//fmt.Printf("comparing %v %v\n", args.Ipaddr, ipObj)
+				if ipObj.Equal(args.Ipaddr) {
+					fLine.IsMatch = true
+					fLine.ConditionMatches = append(fLine.ConditionMatches, ip)
 				}
 			}
 		case args.Subnet:
 			log.Debug("need to match subnet")
 			//log.Printf("working on line %v", fLine)
-			for _, ip := range fLine.MatchingIPStrings {
-				if !fLine.IsMatch {
-					ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
-					if args.Ipaddr.Contains(ipObj) {
-						fLine.IsMatch = true
-					}
+			for _, ip := range fLine.IPRegexMatches {
+				ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
+				if args.Ipaddr.Contains(ipObj) {
+					fLine.IsMatch = true
+					fLine.ConditionMatches = append(fLine.ConditionMatches, ip)
 				}
 			}
 		case args.Contains:
 			log.Debug("need to match contains")
 			//log.Debugf("working on line %v", fLine)
-			for _, ip := range fLine.MatchingIPStrings {
-				if !fLine.IsMatch {
-					ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
-					if ipObj.Contains(args.Ipaddr) {
-						fLine.IsMatch = true
-					}
+			for _, ip := range fLine.IPRegexMatches {
+				ipObj := ipaddr.NewIPAddressString(ip).GetAddress()
+				if ipObj.Contains(args.Ipaddr) {
+					fLine.IsMatch = true
+					fLine.ConditionMatches = append(fLine.ConditionMatches, ip)
 				}
 			}
 		case args.Longest:
@@ -220,9 +220,9 @@ func readSingleFile(args cliArgStruct, fileName inputFile) ([]*readLine, error) 
 		// now find all ipv4 regex matches and ipv6 regex matches from the line
 		// TODO: only check the regex that
 		if args.IsIPv4 {
-			rl.MatchingIPStrings = get_ipv4_addresses_from_line(rl.Line, args.IPv4Regex)
+			rl.IPRegexMatches = get_ipv4_addresses_from_line(rl.Line, args.IPv4Regex)
 		} else {
-			rl.MatchingIPStrings = get_ipv6_addresses_from_line(rl.Line, args.IPv4Regex)
+			rl.IPRegexMatches = get_ipv6_addresses_from_line(rl.Line, args.IPv4Regex)
 		}
 
 		linesInFile = append(linesInFile, &rl)
@@ -249,4 +249,24 @@ func get_ipv6_addresses_from_line(line string, ipv6Regex *regexp.Regexp) []strin
 	}
 	return ret
 
+}
+
+func getFilesFromArgs(inputFiles []string) ([]string, error) {
+	var ret []string
+	for _, ifile := range inputFiles {
+		err := filepath.WalkDir(ifile, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if !d.IsDir() {
+				ret = append(ret, path)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ret, nil
 }
