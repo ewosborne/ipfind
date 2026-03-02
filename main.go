@@ -133,7 +133,7 @@ func main() {
 
 			// run the command
 			//return ipcmd(os.Stdout, cliArgs)
-			return newipcmd(os.Stdout, cliArgs)
+			return ipcmd(os.Stdout, cliArgs)
 		},
 	}
 

@@ -20,7 +20,7 @@ var (
 	ipv6Regex_noSlash   = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)
 )
 
-type newInputFile struct {
+type inputFile struct {
 	IsStdin  bool
 	Filename string
 	Scanner  *bufio.Scanner
@@ -34,31 +34,31 @@ type readLine struct {
 	IsMatch           bool // default is false
 }
 
-func newipcmd(w io.Writer, args cliArgStruct) error {
+func ipcmd(w io.Writer, args cliArgStruct) error {
 
 	// null stuff
-	log.Debug("starting newipcmd")
+	log.Debug("starting ipcmd")
 
-	var newInputFiles = []newInputFile{}
+	var inputFiles = []inputFile{}
 
 	switch len(args.InputFiles) {
 	case 0:
 		log.Debug("need to read in os.Stdin")
-		newInputFiles = append(newInputFiles, newInputFile{IsStdin: true})
+		inputFiles = append(inputFiles, inputFile{IsStdin: true})
 	default:
 		tmp, err := getFilesFromArgs(args.InputFiles)
 		if err != nil {
 			log.Fatal("error", err)
 		}
 		for _, f := range tmp {
-			newInputFiles = append(newInputFiles, newInputFile{IsStdin: false, Filename: f})
+			inputFiles = append(inputFiles, inputFile{IsStdin: false, Filename: f})
 		}
 	}
 
-	// at this point newInputFiles is a list of names or stdin
+	// at this point inputFiles is a list of names or stdin
 	// TODO: for LPM, do I want to check LPM across all files together, or in each one?
 	//  hrmm.
-	for _, f := range newInputFiles {
+	for _, f := range inputFiles {
 		matchingLines := getMatchingLines(args, f)
 		err := doReports(matchingLines, args, w)
 		if err != nil {
@@ -69,7 +69,6 @@ func newipcmd(w io.Writer, args cliArgStruct) error {
 }
 
 func doReports(matchingLines []*readLine, args cliArgStruct, w io.Writer) error {
-	// now do some reporting
 	switch {
 	case args.Json:
 		log.Debug("TODO need to log JSON")
@@ -82,9 +81,16 @@ func doReports(matchingLines []*readLine, args cliArgStruct, w io.Writer) error 
 		fmt.Fprint(w, "\n")
 
 	case args.Trie:
-		log.Print("TODO need to log trie")
-		// create tries and then print them
-		//  also need this for LPM I think.
+		//  also need tries for LPM I think.
+		IPv4Trie, IPv6Trie := getIPTries(args, matchingLines)
+		if IPv4Trie.Size() > 0 {
+			fmt.Println(matchingLines[0].Filename)
+			fmt.Println(IPv4Trie)
+		}
+		if IPv6Trie.Size() > 0 {
+			fmt.Println(matchingLines[0].Filename)
+			fmt.Println(IPv6Trie)
+		}
 	default:
 		log.Debug("need to log text")
 		for _, fLine := range matchingLines {
@@ -93,11 +99,33 @@ func doReports(matchingLines []*readLine, args cliArgStruct, w io.Writer) error 
 			}
 		}
 	}
-	// TODO
 	return nil
 }
 
-func getMatchingLines(args cliArgStruct, f newInputFile) []*readLine {
+func getIPTries(args cliArgStruct, matchingLines []*readLine) (ipaddr.IPv4AddressTrie, ipaddr.IPv6AddressTrie) {
+	IPv4Trie := ipaddr.IPv4AddressTrie{}
+	IPv6Trie := ipaddr.IPv6AddressTrie{}
+
+	switch {
+	case args.IsIPv4:
+		for _, match := range matchingLines {
+			for _, line := range match.MatchingIPStrings {
+				IPv4Trie.Add(ipaddr.NewIPAddressString(line).GetAddress().ToIPv4())
+			}
+		}
+
+	case args.IsIPv6:
+		for _, match := range matchingLines {
+			for _, line := range match.MatchingIPStrings {
+				IPv6Trie.Add(ipaddr.NewIPAddressString(line).GetAddress().ToIPv6())
+			}
+		}
+	}
+	return IPv4Trie, IPv6Trie
+
+}
+
+func getMatchingLines(args cliArgStruct, f inputFile) []*readLine {
 
 	fLines, err := readSingleFile(args, f)
 	if err != nil {
@@ -160,7 +188,7 @@ func getMatchingLines(args cliArgStruct, f newInputFile) []*readLine {
 
 }
 
-func readSingleFile(args cliArgStruct, fileName newInputFile) ([]*readLine, error) {
+func readSingleFile(args cliArgStruct, fileName inputFile) ([]*readLine, error) {
 
 	if fileName.IsStdin {
 		fileName.Scanner = bufio.NewScanner(os.Stdin)
