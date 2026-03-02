@@ -10,14 +10,14 @@ import (
 )
 
 type cliArgStruct struct {
-	Ipstring                     string
-	Exact, Longest, Subnet, Trie bool
-	V4, V6, Contains, Canonize   bool
-	Slash, Json                  bool
-	InputFiles                   []string
-	Debug                        bool
-	Ipaddr                       *ipaddr.IPAddress
-	IPv4Regex, IPv6Regex         *regexp.Regexp
+	Ipstring                           string
+	Exact, Longest, Subnet, Trie       bool
+	IsIPv4, IsIPv6, Contains, Canonize bool
+	Slash, Json                        bool
+	InputFiles                         []string
+	Debug                              bool
+	Ipaddr                             *ipaddr.IPAddress
+	IPv4Regex, IPv6Regex               *regexp.Regexp
 }
 
 func argMassage(cliArgs cliArgStruct) cliArgStruct {
@@ -52,6 +52,9 @@ func argMassage(cliArgs cliArgStruct) cliArgStruct {
 	}
 	slog.SetDefault(logger)
 
+	// TODO: make sure we have both ip addr and files
+	// this is trickier than I thought
+	log.Debugf("arglen ipaddr %v flist %v\n", len(cliArgs.Ipstring), len(cliArgs.InputFiles))
 	// Longest is default if the others aren't set
 	//	cliArgs.Longest = !(cliArgs.Exact || cliArgs.Subnet || cliArgs.Trie || cliArgs.Contains)
 	cliArgs.Longest = !(cliArgs.Exact || cliArgs.Subnet || cliArgs.Contains)
@@ -59,11 +62,11 @@ func argMassage(cliArgs cliArgStruct) cliArgStruct {
 	// turn target IP into address object
 	cliArgs.Ipaddr = ipaddr.NewIPAddressString(cliArgs.Ipstring).GetAddress()
 	if cliArgs.Ipaddr.IsIPv4() {
-		cliArgs.V4 = true
-		cliArgs.V6 = false
+		cliArgs.IsIPv4 = true
+		cliArgs.IsIPv6 = false
 	} else if cliArgs.Ipaddr.IsIPv6() {
-		cliArgs.V4 = false
-		cliArgs.V6 = true
+		cliArgs.IsIPv4 = false
+		cliArgs.IsIPv6 = true
 	}
 
 	// canonize it unless explicitly disallowed

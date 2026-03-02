@@ -132,7 +132,8 @@ func main() {
 			// fmt.Printf("massaged args:%+v\n", cliArgs)
 
 			// run the command
-			return ipcmd(os.Stdout, cliArgs)
+			//return ipcmd(os.Stdout, cliArgs)
+			return newipcmd(os.Stdout, cliArgs)
 		},
 	}
 

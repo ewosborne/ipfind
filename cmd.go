@@ -112,20 +112,18 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 		} else {
 			ifh, err := os.Open(i.Filename)
 			if err != nil {
-				panic("lazy exit here")
+				log.Errorf("could not open file %v\n", i.Filename)
 			}
 			defer ifh.Close()
 			i.Scanner = bufio.NewScanner(ifh)
 
 		}
-		matchedLines, ipv4Trie, ipv6Trie := process_single_file(args, i)
-		displayOutput(w, args, matchedLines, ipv4Trie, ipv6Trie)
-
 	}
 
 	return nil
 } // func ipcmd
 
+// v   keep this function
 func getFilesFromArgs(inputFiles []string) ([]string, error) {
 	var ret []string
 	for _, ifile := range inputFiles {

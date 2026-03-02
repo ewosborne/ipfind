@@ -23,11 +23,11 @@ func scanLine(args cliArgStruct, ret dataMatch) (dataMatch, bool) {
 	var v4_line_matches = []*ipaddr.IPAddress{}
 	var v6_line_matches = []*ipaddr.IPAddress{}
 
-	if args.V4 {
+	if args.IsIPv4 {
 		v4_line_matches = get_ipv4_addresses_from_line(ret.MatchLine, args.IPv4Regex)
 	}
 
-	if args.V6 {
+	if args.IsIPv6 {
 		v6_line_matches = get_ipv6_addresses_from_line(ret.MatchLine, args.IPv6Regex)
 	}
 

@@ -8,6 +8,39 @@ TODO with multiple IPs matching one line I see that line multiple times
 data/docs.txt:12:it contains other subnets such as 2001:db8::42/120 2001:db8:abcd:efff:1234/80 2001:db8::7/127
 data/docs.txt:12:it contains other subnets such as 2001:db8::42/120 2001:db8:abcd:efff:1234/80 2001:db8::7/127
 
+ok, rewriting the parser bits.
+take a filename
+open it 
+read all lines
+return matching lines and all the matches in it
+
+func do_single_file(fname) (v4list, v6list, linelist) {
+  open file
+  defer file.close()
+  for line in file
+   read line
+   extract matches
+   if no matches, move on
+   if one or more matches, store them (v6 list, v4 list) 
+    and also store the machine line (linelist)
+   return v4 list, v6 list, line list
+}
+
+func do_all_files {
+  get list of filenames (fromn args?)
+  for each file {
+    v4list, v6list, line list = do_single_file(fname)
+    add v4list, v6list, line list to what we keep
+  report if we're not doing lpm
+  }
+  if lpm then it's a different path - return total v4list, total v6 list, total line list
+}
+
+func ipcmd {
+  total4, total6, totalLines = do_all_files()
+  then report on them if it's lpm
+}
+
 maybe call it 'grip'?  'go recognize IPs'?
 or just keep 'ipfind', it's fine.
 
