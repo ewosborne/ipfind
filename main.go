@@ -58,12 +58,12 @@ func main() {
 				Aliases:     []string{"l"},
 				Destination: &cliArgs.Longest,
 			},
-			// &cli.BoolWithInverseFlag{
-			// 	Name:        "canonize",
-			// 	Usage:       `Canonize input to match mask`,
-			// 	Destination: &cliArgs.Canonize,
-			// 	Value:       true,
-			// },
+			&cli.BoolWithInverseFlag{
+				Name:        "canonize",
+				Usage:       `Canonize input to match mask`,
+				Destination: &cliArgs.Canonize,
+				Value:       true,
+			},
 			// &cli.BoolWithInverseFlag{
 			// 	Name:        "slash",
 			// 	Usage:       `Require a subnet mask to recognize a host`,
