@@ -10,14 +10,15 @@ import (
 )
 
 type cliArgStruct struct {
-	Ipstring                           string
-	Exact, Longest, Subnet, Trie       bool
-	IsIPv4, IsIPv6, Contains, Canonize bool
-	Slash, Json                        bool
-	InputFiles                         []string
-	Debug                              bool
-	Ipaddr                             *ipaddr.IPAddress
-	IPv4Regex, IPv6Regex               *regexp.Regexp
+	Ipstring                      string
+	Exact, Longest, Subnet, Trie  bool
+	Contains, Canonize            bool
+	addressFamily                 int
+	Slash, Json                   bool
+	InputFiles                    []string
+	Debug                         bool
+	Ipaddr                        *ipaddr.IPAddress
+	IPv4Regex, IPv6Regex, IPRegex *regexp.Regexp
 }
 
 func argMassage(cliArgs cliArgStruct) cliArgStruct {
@@ -55,21 +56,13 @@ func argMassage(cliArgs cliArgStruct) cliArgStruct {
 	// TODO: make sure we have both ip addr and files
 	// this is trickier than I thought
 	log.Debugf("arglen ipaddr %v flist %v\n", len(cliArgs.Ipstring), len(cliArgs.InputFiles))
-	// Longest is default if the others aren't set
-	//	cliArgs.Longest = !(cliArgs.Exact || cliArgs.Subnet || cliArgs.Trie || cliArgs.Contains)
-	cliArgs.Longest = !(cliArgs.Exact || cliArgs.Subnet || cliArgs.Contains)
+	// Subnet is default if the others aren't set
+	cliArgs.Subnet = !(cliArgs.Exact || cliArgs.Longest || cliArgs.Contains)
 
 	// turn target IP into address object
 	cliArgs.Ipaddr = ipaddr.NewIPAddressString(cliArgs.Ipstring).GetAddress()
 	if cliArgs.Ipaddr == nil {
 		log.Fatalf("invalid IP %v", cliArgs.Ipstring)
-	}
-	if cliArgs.Ipaddr.IsIPv4() {
-		cliArgs.IsIPv4 = true
-		cliArgs.IsIPv6 = false
-	} else if cliArgs.Ipaddr.IsIPv6() {
-		cliArgs.IsIPv4 = false
-		cliArgs.IsIPv6 = true
 	}
 
 	// canonize it unless explicitly disallowed
@@ -84,6 +77,18 @@ func argMassage(cliArgs cliArgStruct) cliArgStruct {
 	} else {
 		cliArgs.IPv4Regex = ipv4Regex_noSlash
 		cliArgs.IPv6Regex = ipv6Regex_noSlash
+	}
+
+	if cliArgs.Ipaddr.IsIPv4() {
+		//	cliArgs.IsIPv4 = true // TODO get rid of these
+		//		cliArgs.IsIPv6 = false
+		cliArgs.addressFamily = 4
+		cliArgs.IPRegex = cliArgs.IPv4Regex
+	} else if cliArgs.Ipaddr.IsIPv6() {
+		//		cliArgs.IsIPv4 = false
+		//		cliArgs.IsIPv6 = true
+		cliArgs.addressFamily = 6
+		cliArgs.IPRegex = cliArgs.IPv6Regex
 	}
 
 	return cliArgs
