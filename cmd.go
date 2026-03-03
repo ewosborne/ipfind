@@ -69,6 +69,8 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 	/*
 		open and process each file. leave room for goroutines.
 		TODO: clean all this up. But it feels ok.
+		TODO: tests
+		TODO: set up writer instead of printf?
 	*/
 
 	for _, fileName := range inputFiles {
@@ -184,20 +186,20 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 			if err != nil {
 				log.Error(err)
 			}
-			fmt.Println(string(b))
+			fmt.Fprintln(w, string(b))
 		case args.Trie:
 			log.Info("trie not supported")
 			if IPv4Trie.Size() > 0 {
-				fmt.Printf("%v\n", IPv4Trie)
+				fmt.Fprintf(w, "%v\n", IPv4Trie)
 			}
 			if IPv6Trie.Size() > 0 {
-				fmt.Printf("%v\n", IPv6Trie)
+				fmt.Fprintf(w, "%v\n", IPv6Trie)
 
 			}
 		default:
 			//log.Info("printing text")
 			for _, line := range matchedLines {
-				fmt.Printf("%v:%v:%v\n", line.Filename, line.Idx, line.Line)
+				fmt.Fprintf(w, "%v:%v:%v\n", line.Filename, line.Idx, line.Line)
 			}
 		}
 	} // for fileName range inputFiles
