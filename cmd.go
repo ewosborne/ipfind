@@ -207,7 +207,7 @@ func getMatchingLines(args cliArgStruct, f inputFile) ([]*readLine, int) {
 					fLine.ConditionMatches = append(fLine.ConditionMatches, ip)
 				}
 			}
-		case args.Contains, args.Longest:
+		case args.Contains:
 			log.Debug("need to match contains")
 			//log.Debugf("working on line %v", fLine)
 			for _, ip := range fLine.IPRegexMatches {
