@@ -78,7 +78,7 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 	return nil // todo
 }
 
-func doReports(matchingLines []*readLine, args cliArgStruct, w io.Writer, lsm) error {
+func doReports(matchingLines []*readLine, args cliArgStruct, w io.Writer, lsm int) error {
 	newML := []*readLineExternal{}
 
 	// have a filter on matchingLines which looks for LSM matches
