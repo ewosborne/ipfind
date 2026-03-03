@@ -66,11 +66,9 @@ func argMassage(cliArgs cliArgStruct) cliArgStruct {
 	}
 
 	// canonize it unless explicitly disallowed
-	// TODO: treat this differently if -e is set? trying it out.
 	if cliArgs.Canonize { // if Canonize is false, don't convert 1.2.3.4/24 into 1.2.3.0/24
-		before := cliArgs.Ipaddr
+		log.Debugf("canonzing %v to %v", cliArgs.Ipaddr, cliArgs.Ipaddr.ToPrefixBlock())
 		cliArgs.Ipaddr = cliArgs.Ipaddr.ToPrefixBlock()
-		log.Debugf("canonized %v to %v", before, cliArgs.Ipaddr)
 	}
 
 	if cliArgs.Slash {

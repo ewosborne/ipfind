@@ -55,7 +55,7 @@ func main() {
 				Name: "longest",
 				Usage: `Find all networks with the longest match 
 	 which contains the given network`,
-				Aliases:     []string{"l"},
+				//Aliases:     []string{"l"},
 				Destination: &cliArgs.Longest,
 			},
 			&cli.BoolWithInverseFlag{
