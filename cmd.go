@@ -231,12 +231,12 @@ func getMatchingLines(args cliArgStruct, f inputFile) ([]*readLine, int) {
 		// with things with the matching ip address length.
 		Ipv4Trie, Ipv6Trie := getIPTries(args, fLines)
 
-		if args.IsIPv4 {
+		if args.IsIPv4 && Ipv4Trie.Size() > 0 {
 			//fmt.Println("IPv4LSM", Ipv4Trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()).GetPrefixLen().Len())
 			lsm = max(lsm, Ipv4Trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()).GetPrefixLen().Len())
 		}
 
-		if args.IsIPv6 {
+		if args.IsIPv6 && Ipv6Trie.Size() > 0 {
 			//fmt.Println("IPv6LSM", Ipv6Trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()).GetPrefixLen().Len())
 			lsm = max(lsm, Ipv6Trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()).GetPrefixLen().Len())
 		}
