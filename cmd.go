@@ -1,5 +1,11 @@
 package main
 
+/* TODO
+figure out what --longest really means
+json and trie outputs
+etc
+*/
+
 import (
 	"bufio"
 	"io"
@@ -92,17 +98,16 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 			ipMatches := get_ip_addresses_from_line(args.IPRegex, args.addressFamily, line)
 			log.Debugf("regex matches are %+v", ipMatches)
 			foundLine = &foundLineType{Idx: idx, ipRegexMatches: ipMatches, Line: line}
-			//log.Printf("found ip regex match %+v", foundLine)
 			foundLines = append(foundLines, foundLine)
 
 			// now see if there are condtion matches
 			// append each to foundLine.conditionMatches and set foundline.isMatch
 			for _, m := range ipMatches {
-				log.Printf("looking at %+v for condition match", m)
+				log.Debug("looking at %+v for condition match", m)
 
 				// turn it into an IP address
 				ipObject := ipaddr.NewIPAddressString(m).GetAddress()
-				log.Printf("ip address object of regex match:%+v", ipObject)
+				log.Debug("ip address object of regex match:%+v", ipObject)
 
 				// do I populate the trie here just in case I need it?
 				// sure
@@ -119,24 +124,24 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 
 				switch {
 				case args.Exact:
-					log.Printf("comparing %v %v for Exact", ipObject, args.Ipaddr)
+					log.Debug("comparing %v %v for Exact", ipObject, args.Ipaddr)
 					if ipObject.Equal(args.Ipaddr) {
-						log.Printf("found equal match %v", ipObject)
+						log.Debug("found equal match %v", ipObject)
 						foundLine.isMatch = true
 						foundLine.conditionMatches = append(foundLine.conditionMatches, ipObject)
 					}
 				case args.Contains:
-					log.Printf("comparing %v %v for Contains", ipObject, args.Ipaddr)
+					log.Debug("comparing %v %v for Contains", ipObject, args.Ipaddr)
 					if ipObject.Contains(args.Ipaddr) {
-						log.Printf("found contains match %v", ipObject)
+						log.Debug("found contains match %v", ipObject)
 						foundLine.isMatch = true
 
 						foundLine.conditionMatches = append(foundLine.conditionMatches, ipObject)
 					}
 				case args.Subnet:
-					log.Printf("comparing %v %v for Subnet", ipObject, args.Ipaddr)
+					log.Debug("comparing %v %v for Subnet", ipObject, args.Ipaddr)
 					if args.Ipaddr.Contains(ipObject) {
-						log.Printf("found subnet match %v", ipObject)
+						log.Debug("found subnet match %v", ipObject)
 						foundLine.isMatch = true
 
 						foundLine.conditionMatches = append(foundLine.conditionMatches, ipObject)
