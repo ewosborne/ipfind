@@ -80,9 +80,24 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 
 func doReports(matchingLines []*readLine, args cliArgStruct, w io.Writer, lsm int) error {
 	newML := []*readLineExternal{}
+	newInternalML := []*readLine{}
 
 	// have a filter on matchingLines which looks for LSM matches
 	// TODO
+
+	if args.Longest {
+		for _, tmp := range matchingLines {
+			for _, m := range tmp.ConditionMatches {
+				if ipaddr.NewIPAddressString(m).GetAddress().GetPrefixLen().Len() == lsm {
+					newInternalML = append(newInternalML, tmp)
+				}
+			}
+		}
+	}
+
+	if len(newInternalML) > 0 {
+		matchingLines = newInternalML
+	}
 
 	if !args.Debug {
 		for _, tmp := range matchingLines {
@@ -162,10 +177,9 @@ func getMatchingLines(args cliArgStruct, f inputFile) ([]*readLine, int) {
 		log.Fatal("error opening %v", f)
 	}
 	log.Debug("Read in %+v from %v", fLines, f.Filename)
-
+	var lsm int
 	// at this point fLines is []*readLine, for each line in the file I just read
 
-	var lsm int
 	for _, fLine := range fLines {
 		switch {
 
@@ -201,31 +215,34 @@ func getMatchingLines(args cliArgStruct, f inputFile) ([]*readLine, int) {
 				if ipObj.Contains(args.Ipaddr) {
 					fLine.IsMatch = true
 					fLine.ConditionMatches = append(fLine.ConditionMatches, ip)
-					lsm = max(lsm, ipObj.GetPrefixLen().Len())
 				}
 			}
-			//case args.Longest:
+
 			//	log.Fatal("LSM not supported yet")
-			// nothing to do yet
-			//   need to think this logic through some more.
+			// dump it all in a trie and get
 			/*
-				Longest Match isn't 'mask of the longest subnet found'.
-				It's asking - what's the longest subnet which contains this address?
-				so is it args.Contains but with a second pass filter?
-				maybe
-
-				lsm forwarding is
-				I have 10.1.1.0/24 and 10.1.1.0/30 in the rib
-				10.1.1.2 matches both of those and so is 10.1.1.0/30
-				10.1.1.75 matches the first
-				10.2.1.1 matches neither
-
-				so yeah, it's Contains with extra steps.
+				target := ipaddr.NewIPAddressString("192.168.1.150").GetAddress().ToIPv4()
+				match := trie.LongestPrefixMatch(target)
 			*/
 		}
 	}
+	if args.Longest {
+		// this works but what I think I really want is to populate matchingLines
+		// with things with the matching ip address length.
+		Ipv4Trie, Ipv6Trie := getIPTries(args, fLines)
 
-	fmt.Println("LSM", lsm)
+		if args.IsIPv4 {
+			//fmt.Println("IPv4LSM", Ipv4Trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()).GetPrefixLen().Len())
+			lsm = max(lsm, Ipv4Trie.LongestPrefixMatch(args.Ipaddr.ToIPv4()).GetPrefixLen().Len())
+		}
+
+		if args.IsIPv6 {
+			//fmt.Println("IPv6LSM", Ipv6Trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()).GetPrefixLen().Len())
+			lsm = max(lsm, Ipv6Trie.LongestPrefixMatch(args.Ipaddr.ToIPv6()).GetPrefixLen().Len())
+		}
+
+	}
+
 	var matchingLines = []*readLine{}
 	for _, fLine := range fLines {
 		if fLine.IsMatch {
