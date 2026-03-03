@@ -77,7 +77,7 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 		var IPv6Trie = ipaddr.IPv6AddressTrie{}
 		var matchedLines []*foundLineType
 
-		log.Info("need to load", "file", fileName)
+		log.Debug("need to load", "file", fileName)
 		if fileName.IsStdin {
 			fileName.Scanner = bufio.NewScanner(os.Stdin)
 		} else {
@@ -128,9 +128,9 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 
 				switch {
 				case args.Exact:
-					log.Debug("comparing %v %v for Exact", ipObject, args.Ipaddr)
+					//log.Printf("comparing %v %v for Exact", ipObject, args.Ipaddr)
 					if ipObject.Equal(args.Ipaddr) {
-						log.Debug("found equal match %v", ipObject)
+						//log.Printf("found equal match %v:%v", ipObject, lineObj)
 						lineObj.isMatch = true
 						lineObj.conditionMatches = append(lineObj.conditionMatches, ipObject)
 						matchedLines = append(matchedLines, lineObj)
@@ -160,8 +160,6 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 
 		switch {
 		case args.Json:
-			// TODO this prints all lines, not matching lines
-
 			b, err := json.MarshalIndent(matchedLines, "", "  ")
 			if err != nil {
 				log.Error(err)
@@ -170,13 +168,11 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 		case args.Trie:
 			log.Info("trie not supported")
 		default:
-			for _, line := range foundLines {
-				if lineObj.isMatch {
-					fmt.Printf("%v:%v:%v\n", line.Filename, line.Idx, line.Line)
-				}
+			//log.Info("printing text")
+			for _, line := range matchedLines {
+				fmt.Printf("%v:%v:%v\n", line.Filename, line.Idx, line.Line)
 			}
 		}
-
 	} // for fileName range inputFiles
 	return nil
 } // func ipcmd
