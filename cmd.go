@@ -68,6 +68,7 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 
 	/*
 		open and process each file. leave room for goroutines.
+		TODO: clean all this up. But it feels ok.
 	*/
 
 	for _, fileName := range inputFiles {
@@ -113,19 +114,6 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 				ipObject := ipaddr.NewIPAddressString(m).GetAddress()
 				log.Debugf("ip address object of regex match:%+v", ipObject)
 
-				// do I populate the trie here just in case I need it?
-				// sure
-				switch args.addressFamily {
-				case 4:
-					IPv4Trie.Add(ipObject.ToIPv4())
-					//log.Printf("ipv4 trie %v", IPv4Trie)
-
-				case 6:
-					IPv6Trie.Add(ipObject.ToIPv6())
-					//log.Printf("ipv6 trie %v", IPv6Trie)
-
-				}
-
 				switch {
 				case args.Exact:
 					//log.Printf("comparing %v %v for Exact", ipObject, args.Ipaddr)
@@ -134,6 +122,17 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 						lineObj.isMatch = true
 						lineObj.conditionMatches = append(lineObj.conditionMatches, ipObject)
 						matchedLines = append(matchedLines, lineObj)
+
+						switch args.addressFamily {
+						case 4:
+							IPv4Trie.Add(ipObject.ToIPv4())
+							//log.Printf("ipv4 trie %v", IPv4Trie)
+
+						case 6:
+							IPv6Trie.Add(ipObject.ToIPv6())
+							//log.Printf("ipv6 trie %v", IPv6Trie)
+
+						}
 					} else {
 						log.Debug("does not contain")
 					}
@@ -144,6 +143,13 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 						lineObj.isMatch = true
 						lineObj.conditionMatches = append(lineObj.conditionMatches, ipObject)
 						matchedLines = append(matchedLines, lineObj)
+
+						switch args.addressFamily {
+						case 4:
+							IPv4Trie.Add(ipObject.ToIPv4())
+						case 6:
+							IPv6Trie.Add(ipObject.ToIPv6())
+						}
 					} else {
 						log.Debug("does not contain")
 					}
@@ -154,6 +160,17 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 						lineObj.isMatch = true
 						lineObj.conditionMatches = append(lineObj.conditionMatches, ipObject)
 						matchedLines = append(matchedLines, lineObj)
+
+						switch args.addressFamily {
+						case 4:
+							IPv4Trie.Add(ipObject.ToIPv4())
+							//log.Printf("ipv4 trie %v", IPv4Trie)
+
+						case 6:
+							IPv6Trie.Add(ipObject.ToIPv6())
+							//log.Printf("ipv6 trie %v", IPv6Trie)
+
+						}
 					} else {
 						log.Debug("does not contain")
 					}
@@ -170,6 +187,13 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 			fmt.Println(string(b))
 		case args.Trie:
 			log.Info("trie not supported")
+			if IPv4Trie.Size() > 0 {
+				fmt.Printf("%v\n", IPv4Trie)
+			}
+			if IPv6Trie.Size() > 0 {
+				fmt.Printf("%v\n", IPv6Trie)
+
+			}
 		default:
 			//log.Info("printing text")
 			for _, line := range matchedLines {
