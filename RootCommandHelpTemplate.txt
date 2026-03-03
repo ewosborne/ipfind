@@ -1,6 +1,9 @@
 USAGE
- ipfind's purpose is to find IP addresses in a file. Rather than forcing you to throw ugly strings, globs, or regexps at a search, it understands what IP addresses are and how to look for them in a file. IPv4 and IPv6 are both fully supported.
+ ipfind's purpose is to find IP addresses in a file. Rather than forcing you to throw ugly strings, globs, or regexps at a search, it understands what IP addresses are and how to look for them in a file. IPv4 and IPv6 are both fully supported. It can find the exact network you're looking for, all subnets of that network, or all subnets which contain that network.
 
+Why does this exist?  I was looking for a particular IP address in the JSON blob that Azure publishes which contains their cloud IP allocations (as of March 2026: https://www.microsoft.com/en-us/download/details.aspx?id=56519) and it was hard to find.  The same netblock existed in multiple lengths and I wanted to find the shortest match. If you've tried this before you know how frustrating it can be, and how difficult it is to make sure you've found the shortest possible match.
+
+From that was borne ipfind.
 
  ipfind takes one mandatory argument, the IP address or network to search for, and one optional argument, a list of file to search. If no files are specified then ipfind reads from stdin.
 
@@ -13,15 +16,84 @@ USAGE
 
  Any search mode can be used with any output mode.
 
+ Credit goes to https://github.com/seancfoley/ipaddress-go for doing a lot of the IP address heavy lifting, particularly in the area of tries.
+
 
 
 EXAMPLES
- These examples use `data/docs.txt`.
+ These examples use `data/docs.txt`. The entire file is:
 
-% ipfind 10.1.1.1/32 data/docs.txt -e
-data/docs.txt:5:and here's a match against 10.1.1.1/32
+10.1.1.0/24
+10.1.0.0/23
+10.1.2.0/24
+10.1.0.0/16
+10.1.0.0/18
+10.1.1.0/25
+10.1.1.0/30
+10.1.1.1/25
+10.1.1.1/32
 
 
+Match conditions: --exact, --subnets-of, --contains
+With the --exact/-e flag, ipfind finds the exact network 10.1.0.0/23.  Note that what's passed in is 10.1.0.2/23. ipfind knows to turn this into the 23-bit network 10.1.0.0/23.
+
+ipfind 10.1.0.2/23 data/docs.txt --exact
+data/docs.txt:2:10.1.0.0/23
+
+
+
+With --subnets-of/-s, ipfind finds all subnets of 10.1.0/0/23. Note that this inclues 10.1.0.0/23 itself.
+ipfind 10.1.0.2/23 data/docs.txt --subnets-of
+
+data/docs.txt:1:10.1.1.0/24
+data/docs.txt:2:10.1.0.0/23
+data/docs.txt:6:10.1.1.0/25
+data/docs.txt:7:10.1.1.0/30
+data/docs.txt:8:10.1.1.1/25
+data/docs.txt:9:10.1.1.1/32
+
+
+The --contains/-c flag is the inverse of --subnets-of. It find all networks which contain 10.1.0.0/23. Note that this, too, includes 10.1.0.0/23.
+
+ipfind 10.1.0.2/23 data/docs.txt --contains
+data/docs.txt:2:10.1.0.0/23
+data/docs.txt:4:10.1.0.0/16
+data/docs.txt:5:10.1.0.0/18
+
+
+Display options: --json/-j and --trie/-t
+The default output is a list of {filename}:{line number}:{matching line}, as you see above. There's also a --json flag:
+
+ipfind 10.1.0.2/23 data/docs.txt --contains --json
+[
+  {
+    "Filename": "data/docs.txt",
+    "Idx": 2,
+    "Line": "10.1.0.0/23"
+  },
+  {
+    "Filename": "data/docs.txt",
+    "Idx": 4,
+    "Line": "10.1.0.0/16"
+  },
+  {
+    "Filename": "data/docs.txt",
+    "Idx": 5,
+    "Line": "10.1.0.0/18"
+  }
+]
+
+And there's a --trie option which prints out the trie that a routing table would be built out of to reach the network in question:
+
+ipfind 10.1.0.2/23 data/docs.txt --contains --trie
+
+○ 0.0.0.0/0 (3)
+└─● 10.1.0.0/16 (3)
+  └─● 10.1.0.0/18 (2)
+    └─● 10.1.0.0/23 (1)
+
+
+The trie stuff is neat but very experimental.     
 
 
 WEBSITE

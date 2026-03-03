@@ -2,7 +2,6 @@ package main
 
 /* TODO
 figure out what --longest really means
-json and trie outputs
 etc
 */
 
@@ -188,7 +187,6 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 			}
 			fmt.Fprintln(w, string(b))
 		case args.Trie:
-			log.Info("trie not supported")
 			if IPv4Trie.Size() > 0 {
 				fmt.Fprintf(w, "%v\n", IPv4Trie)
 			}
