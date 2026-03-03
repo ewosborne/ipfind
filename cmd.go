@@ -26,7 +26,7 @@ type inputFile struct {
 	Scanner  *bufio.Scanner
 }
 
-type foundLine struct {
+type foundLineType struct {
 	Filename         string
 	Idx              int
 	Line             string
@@ -63,8 +63,8 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 	*/
 
 	for _, fileName := range inputFiles {
-		var idx int                 // line number
-		var foundLines []*foundLine // lines that do something
+		var idx int                     // line number
+		var foundLines []*foundLineType // lines that do something
 		var IPv4Trie = ipaddr.IPv4AddressTrie{}
 		var IPv6Trie = ipaddr.IPv6AddressTrie{}
 
@@ -81,6 +81,7 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 			fileName.Scanner = bufio.NewScanner(ifh)
 		}
 
+		var foundLine *foundLineType
 		for fileName.Scanner.Scan() {
 			idx++ // line numbers start at 1
 			line := fileName.Scanner.Text()
@@ -88,9 +89,9 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 				continue // skip blank lines
 			}
 			// parse the line into its bits and fill out struct
-			ipMatches := get_ip_addresses_from_line(args.IPRegex, line)
+			ipMatches := get_ip_addresses_from_line(args.IPRegex, args.addressFamily, line)
 			log.Debugf("regex matches are %+v", ipMatches)
-			foundLine := &foundLine{Idx: idx, ipRegexMatches: ipMatches, Line: line}
+			foundLine = &foundLineType{Idx: idx, ipRegexMatches: ipMatches, Line: line}
 			//log.Printf("found ip regex match %+v", foundLine)
 			foundLines = append(foundLines, foundLine)
 
@@ -121,25 +122,34 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 					log.Printf("comparing %v %v for Exact", ipObject, args.Ipaddr)
 					if ipObject.Equal(args.Ipaddr) {
 						log.Printf("found equal match %v", ipObject)
+						foundLine.isMatch = true
 						foundLine.conditionMatches = append(foundLine.conditionMatches, ipObject)
 					}
 				case args.Contains:
 					log.Printf("comparing %v %v for Contains", ipObject, args.Ipaddr)
 					if ipObject.Contains(args.Ipaddr) {
 						log.Printf("found contains match %v", ipObject)
+						foundLine.isMatch = true
+
 						foundLine.conditionMatches = append(foundLine.conditionMatches, ipObject)
 					}
 				case args.Subnet:
 					log.Printf("comparing %v %v for Subnet", ipObject, args.Ipaddr)
 					if args.Ipaddr.Contains(ipObject) {
 						log.Printf("found subnet match %v", ipObject)
+						foundLine.isMatch = true
+
 						foundLine.conditionMatches = append(foundLine.conditionMatches, ipObject)
 					}
 				}
-			}
-
+			} // for each ipMatch
 		} // for filename.Scanner
-		log.Print("need to show matched line here but scope thing")
+		log.Print("all matched lines")
+		log.Printf("%+v", foundLines) // just prints a bunch of pointers.
+		for _, item := range foundLines {
+			log.Printf("  %+v", item)
+		}
+
 	} // for fileName range inputFiles
 	return nil
 } // func ipcmd
@@ -361,26 +371,37 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 // 	return linesInFile, nil
 // }
 
-func get_ip_addresses_from_line(ipre *regexp.Regexp, line string) []string {
-	return ipre.FindAllString(line, -1)
-}
-
-func get_ipv4_addresses_from_line(line string, ipv4Regex *regexp.Regexp) []string {
-	return get_ip_addresses_from_line(ipv4Regex, line)
-}
-
-func get_ipv6_addresses_from_line(line string, ipv6Regex *regexp.Regexp) []string {
-
-	// hack because the regex is getting messy but this seems ok.
-	ret := []string{}
-	for _, m := range get_ip_addresses_from_line(ipv6Regex, line) {
-		if strings.Contains(m, ":") {
-			ret = append(ret, m)
+func get_ip_addresses_from_line(ipre *regexp.Regexp, addressFamily int, line string) []string {
+	var ret []string
+	switch addressFamily {
+	case 4:
+		ret = ipre.FindAllString(line, -1)
+	case 6:
+		for _, m := range ipre.FindAllString(line, -1) {
+			if strings.Contains(m, ":") {
+				ret = append(ret, m)
+			}
 		}
 	}
 	return ret
-
 }
+
+// func get_ipv4_addresses_from_line(line string, ipv4Regex *regexp.Regexp) []string {
+// 	return get_ip_addresses_from_line(ipv4Regex, line)
+// }
+
+// func get_ipv6_addresses_from_line(line string, ipv6Regex *regexp.Regexp) []string {
+
+// 	// hack because the regex is getting messy but this seems ok.
+// 	ret := []string{}
+// 	for _, m := range get_ip_addresses_from_line(ipv6Regex, line) {
+// 		if strings.Contains(m, ":") {
+// 			ret = append(ret, m)
+// 		}
+// 	}
+// 	return ret
+
+// }
 
 func getFilesFromArgs(inputFiles []string) ([]string, error) {
 	var ret []string
