@@ -57,7 +57,7 @@ func argMassage(cliArgs cliArgStruct) cliArgStruct {
 	// this is trickier than I thought
 	log.Debugf("arglen ipaddr %v flist %v\n", len(cliArgs.Ipstring), len(cliArgs.InputFiles))
 	// Subnet is default if the others aren't set
-	cliArgs.Subnet = !(cliArgs.Exact || cliArgs.Longest || cliArgs.Contains)
+	cliArgs.Subnet = !(cliArgs.Exact || cliArgs.Contains)
 
 	// turn target IP into address object
 	cliArgs.Ipaddr = ipaddr.NewIPAddressString(cliArgs.Ipstring).GetAddress()

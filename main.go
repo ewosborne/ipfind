@@ -51,18 +51,25 @@ func main() {
 				Usage:       "Debug output",
 				Destination: &cliArgs.Debug,
 			},
-			&cli.BoolWithInverseFlag{
-				Name:        "canonize",
-				Usage:       `Canonize input to match mask`,
-				Destination: &cliArgs.Canonize,
-				Value:       true,
+			&cli.BoolFlag{
+				Name: "longest",
+				Usage: `Find all networks with the longest match 
+	 which contains the given network`,
+				Aliases:     []string{"l"},
+				Destination: &cliArgs.Longest,
 			},
-			&cli.BoolWithInverseFlag{
-				Name:        "slash",
-				Usage:       `Require a subnet mask to recognize a host`,
-				Destination: &cliArgs.Slash,
-				Value:       true,
-			},
+			// &cli.BoolWithInverseFlag{
+			// 	Name:        "canonize",
+			// 	Usage:       `Canonize input to match mask`,
+			// 	Destination: &cliArgs.Canonize,
+			// 	Value:       true,
+			// },
+			// &cli.BoolWithInverseFlag{
+			// 	Name:        "slash",
+			// 	Usage:       `Require a subnet mask to recognize a host`,
+			// 	Destination: &cliArgs.Slash,
+			// 	Value:       true,
+			// },
 		},
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
 			{
@@ -93,15 +100,6 @@ func main() {
 							Usage:       "Find exact network & subnet matches",
 							Aliases:     []string{"e"},
 							Destination: &cliArgs.Exact,
-						},
-					},
-					{
-						&cli.BoolFlag{
-							Name: "longest",
-							Usage: `Find all networks with the longest match 
-	 which contains the given network`,
-							Aliases:     []string{"l"},
-							Destination: &cliArgs.Longest,
 						},
 					},
 					{

@@ -107,11 +107,11 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 			// now see if there are condtion matches
 			// append each to foundLine.conditionMatches and set foundline.isMatch
 			for _, m := range ipMatches {
-				log.Debug("looking at %+v for condition match", m)
+				log.Debugf("looking at %+v for condition match", m)
 
 				// turn it into an IP address
 				ipObject := ipaddr.NewIPAddressString(m).GetAddress()
-				log.Debug("ip address object of regex match:%+v", ipObject)
+				log.Debugf("ip address object of regex match:%+v", ipObject)
 
 				// do I populate the trie here just in case I need it?
 				// sure
@@ -134,25 +134,28 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 						lineObj.isMatch = true
 						lineObj.conditionMatches = append(lineObj.conditionMatches, ipObject)
 						matchedLines = append(matchedLines, lineObj)
-
+					} else {
+						log.Debug("does not contain")
 					}
 				case args.Contains:
-					log.Debug("comparing %v %v for Contains", ipObject, args.Ipaddr)
+					log.Debugf("does %v contain %v", ipObject, args.Ipaddr)
 					if ipObject.Contains(args.Ipaddr) {
-						log.Debug("found contains match %v", ipObject)
+						log.Debug("FOUND contains match %v", ipObject)
 						lineObj.isMatch = true
 						lineObj.conditionMatches = append(lineObj.conditionMatches, ipObject)
 						matchedLines = append(matchedLines, lineObj)
-
+					} else {
+						log.Debug("does not contain")
 					}
 				case args.Subnet:
-					log.Debug("comparing %v %v for Subnet", ipObject, args.Ipaddr)
+					log.Debugf("does %t contain %t", args.Ipaddr, ipObject)
 					if args.Ipaddr.Contains(ipObject) {
-						log.Debug("found subnet match %v", ipObject)
+						log.Debugf("FOUND subnet match %v", ipObject)
 						lineObj.isMatch = true
 						lineObj.conditionMatches = append(lineObj.conditionMatches, ipObject)
 						matchedLines = append(matchedLines, lineObj)
-
+					} else {
+						log.Debug("does not contain")
 					}
 				}
 			} // for each ipMatch
