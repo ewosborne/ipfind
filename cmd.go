@@ -69,8 +69,8 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 	//  hrmm.
 	// maybe all of it?
 	for _, f := range inputFiles {
-		matchingLines := getMatchingLines(args, f)
-		err := doReports(matchingLines, args, w)
+		matchingLines, lsm := getMatchingLines(args, f)
+		err := doReports(matchingLines, args, w, lsm)
 		if err != nil {
 			log.Error(err)
 		}
@@ -78,8 +78,11 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 	return nil // todo
 }
 
-func doReports(matchingLines []*readLine, args cliArgStruct, w io.Writer) error {
+func doReports(matchingLines []*readLine, args cliArgStruct, w io.Writer, lsm) error {
 	newML := []*readLineExternal{}
+
+	// have a filter on matchingLines which looks for LSM matches
+	// TODO
 
 	if !args.Debug {
 		for _, tmp := range matchingLines {
@@ -152,7 +155,7 @@ func getIPTries(args cliArgStruct, matchingLines []*readLine) (ipaddr.IPv4Addres
 
 }
 
-func getMatchingLines(args cliArgStruct, f inputFile) []*readLine {
+func getMatchingLines(args cliArgStruct, f inputFile) ([]*readLine, int) {
 
 	fLines, err := readSingleFile(args, f)
 	if err != nil {
@@ -190,7 +193,7 @@ func getMatchingLines(args cliArgStruct, f inputFile) []*readLine {
 					fLine.ConditionMatches = append(fLine.ConditionMatches, ip)
 				}
 			}
-		case args.Contains:
+		case args.Contains, args.Longest:
 			log.Debug("need to match contains")
 			//log.Debugf("working on line %v", fLine)
 			for _, ip := range fLine.IPRegexMatches {
@@ -198,15 +201,31 @@ func getMatchingLines(args cliArgStruct, f inputFile) []*readLine {
 				if ipObj.Contains(args.Ipaddr) {
 					fLine.IsMatch = true
 					fLine.ConditionMatches = append(fLine.ConditionMatches, ip)
+					lsm = max(lsm, ipObj.GetPrefixLen().Len())
 				}
 			}
-		case args.Longest:
-			log.Fatal("LSM not supported yet")
+			//case args.Longest:
+			//	log.Fatal("LSM not supported yet")
 			// nothing to do yet
 			//   need to think this logic through some more.
+			/*
+				Longest Match isn't 'mask of the longest subnet found'.
+				It's asking - what's the longest subnet which contains this address?
+				so is it args.Contains but with a second pass filter?
+				maybe
+
+				lsm forwarding is
+				I have 10.1.1.0/24 and 10.1.1.0/30 in the rib
+				10.1.1.2 matches both of those and so is 10.1.1.0/30
+				10.1.1.75 matches the first
+				10.2.1.1 matches neither
+
+				so yeah, it's Contains with extra steps.
+			*/
 		}
 	}
 
+	fmt.Println("LSM", lsm)
 	var matchingLines = []*readLine{}
 	for _, fLine := range fLines {
 		if fLine.IsMatch {
@@ -214,7 +233,7 @@ func getMatchingLines(args cliArgStruct, f inputFile) []*readLine {
 		}
 	}
 
-	return matchingLines
+	return matchingLines, lsm
 
 }
 
