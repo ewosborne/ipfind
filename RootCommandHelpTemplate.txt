@@ -1,7 +1,7 @@
 USAGE
  ipfind's purpose is to find IP addresses in a file. Rather than forcing you to throw ugly strings, globs, or regexps at a search, it understands what IP addresses are and how to look for them in a file. IPv4 and IPv6 are both fully supported. It can find the exact network you're looking for, all subnets of that network, or all subnets which contain that network.
 
-Why does this exist?  I was looking for a particular IP address in the JSON blob that Azure publishes which contains their cloud IP allocations (as of March 2026: https://www.microsoft.com/en-us/download/details.aspx?id=56519) and it was hard to find.  The same netblock existed in multiple lengths and I wanted to find the shortest match. If you've tried this before you know how frustrating it can be, and how difficult it is to make sure you've found the shortest possible match.
+Why does ipfind exist?  I was looking for a particular IP address in the JSON blob that Azure publishes which contains their cloud IP allocations (as of March 2026: https://www.microsoft.com/en-us/download/details.aspx?id=56519) and it was hard to find.  The same netblock existed in multiple lengths and I wanted to find the shortest match. If you've tried this before you know how frustrating it can be, and how difficult it is to make sure you've found the shortest possible match.
 
 From that was borne ipfind.
 
