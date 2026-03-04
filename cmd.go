@@ -42,6 +42,37 @@ type lineParseResult struct {
 	isMatch          bool
 }
 
+// func get_ip_addresses_from_line(ipre *regexp.Regexp, addressFamily int, line string) []string {
+// 	var ret []string
+// 	switch addressFamily {
+// 	case 4:
+// 		ret = ipre.FindAllString(line, -1)
+// 	case 6:
+// 		for _, m := range ipre.FindAllString(line, -1) {
+// 			if strings.Contains(m, ":") {
+// 				ret = append(ret, m)
+// 			}
+// 		}
+// 	}
+// 	return ret
+// }
+
+// lineObj.ipRegexMatches = get_ip_addresses_from_line(args.IPRegex, args.addressFamily, line)
+func (l *lineParseResult) getRegexMatches(ipre *regexp.Regexp, af int) []string {
+	var ret []string
+	switch af {
+	case 4:
+		ret = ipre.FindAllString(l.Line, -1)
+	case 6:
+		for _, m := range ipre.FindAllString(l.Line, -1) {
+			if strings.Contains(m, ":") {
+				ret = append(ret, m)
+			}
+		}
+	}
+	return ret
+}
+
 type fileParseResultStruct struct {
 	Idx                   int                // line number
 	regexMatchedLines     []*lineParseResult // lines that do something
@@ -138,7 +169,8 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 			}
 
 			lineObj := &lineParseResult{Idx: fileParseResult.Idx, Line: line}
-			lineObj.ipRegexMatches = get_ip_addresses_from_line(args.IPRegex, args.addressFamily, line)
+			//lineObj.ipRegexMatches = get_ip_addresses_from_line(args.IPRegex, args.addressFamily, line)
+			lineObj.ipRegexMatches = lineObj.getRegexMatches(args.IPRegex, args.addressFamily)
 			log.Debugf("regex matches are %+v", lineObj.ipRegexMatches)
 
 			// now see if there are condtion matches
@@ -239,21 +271,6 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 	} // for fileName range inputFiles
 	return nil
 } // func ipcmd
-
-func get_ip_addresses_from_line(ipre *regexp.Regexp, addressFamily int, line string) []string {
-	var ret []string
-	switch addressFamily {
-	case 4:
-		ret = ipre.FindAllString(line, -1)
-	case 6:
-		for _, m := range ipre.FindAllString(line, -1) {
-			if strings.Contains(m, ":") {
-				ret = append(ret, m)
-			}
-		}
-	}
-	return ret
-}
 
 func getFileNamesFromArgs(inputFiles []string) ([]string, error) {
 	var ret []string
