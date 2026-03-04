@@ -34,12 +34,13 @@ type inputFile struct {
 }
 
 type foundLineType struct {
-	Filename         string
-	Idx              int
-	Line             string
-	ipRegexMatches   []string
-	conditionMatches []*ipaddr.IPAddress
-	isMatch          bool // default is false
+	Filename            string
+	Idx                 int
+	Line                string
+	ipRegexMatches      []string
+	conditionMatches    []*ipaddr.IPAddress
+	isMatch             bool // default is false
+	conditionMatchesLSM int
 }
 
 func ipcmd(w io.Writer, args cliArgStruct) error {
@@ -182,6 +183,21 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 			} // for each ipMatch
 		} // for filename.Scanner
 
+		// lsm maybe?
+
+		// TODO think about what this really does.
+		var lsm int
+		if args.Longest {
+			for _, lineObj := range matchedLines {
+				for _, cm := range lineObj.conditionMatches {
+					lsm = max(lsm, cm.GetPrefixLen().Len())
+				}
+				lineObj.conditionMatchesLSM = lsm
+			}
+
+			log.Printf("found lsm %v", lsm)
+		}
+
 		switch {
 		case args.Json:
 			b, err := json.MarshalIndent(matchedLines, "", "  ")
@@ -200,7 +216,7 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 		default:
 			//log.Info("printing text")
 			for _, line := range matchedLines {
-				fmt.Fprintf(w, "%v:%v:%v\n", line.Filename, line.Idx, line.Line)
+				fmt.Fprintf(w, "%v:%v:%v:%v\n", line.Filename, line.Idx, line.Line, line.conditionMatchesLSM)
 			}
 		}
 	} // for fileName range inputFiles
