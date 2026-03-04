@@ -31,16 +31,57 @@ type inputFile struct {
 	IsStdin  bool
 	Filename string
 	Scanner  *bufio.Scanner
+	Closer   io.Closer
 }
 
-type foundLineType struct {
-	Filename            string
-	Idx                 int
-	Line                string
-	ipRegexMatches      []string
-	conditionMatches    []*ipaddr.IPAddress
-	isMatch             bool // default is false
-	conditionMatchesLSM int
+type lineParseResult struct {
+	Idx              int
+	Line             string
+	ipRegexMatches   []string
+	conditionMatches []*ipaddr.IPAddress
+	isMatch          bool
+}
+
+type fileParseResults struct {
+	Idx                   int                // line number
+	regexMatchedLines     []*lineParseResult // lines that do something
+	IPv4Trie              ipaddr.IPv4AddressTrie
+	IPv6Trie              ipaddr.IPv6AddressTrie
+	conditionMatchedLines []*lineParseResult
+	Filename              string
+}
+
+// TODO I'm pretty sure there are smarter ways to do this
+func getInputFilesOrStdin(files []string) ([]inputFile, error) {
+	ret := []inputFile{}
+
+	switch len(files) {
+	case 0:
+		ret = append(ret, inputFile{IsStdin: true})
+	default:
+		fileNames, err := getFileNamesFromArgs(files)
+		if err != nil {
+			log.Error("error getting filenames", err)
+			return nil, err
+		}
+		for _, f := range fileNames {
+			ret = append(ret, inputFile{IsStdin: false, Filename: f})
+		}
+	}
+	return ret, nil
+
+}
+
+func getScannerFromFile(fileName inputFile) (*bufio.Scanner, io.Closer) {
+	if fileName.IsStdin {
+		return bufio.NewScanner(os.Stdin), nil
+	} else {
+		ifh, err := os.Open(fileName.Filename)
+		if err != nil {
+			log.Fatalf("error opening %v\n", fileName.Filename)
+		}
+		return bufio.NewScanner(ifh), ifh
+	}
 }
 
 func ipcmd(w io.Writer, args cliArgStruct) error {
@@ -48,175 +89,113 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 	// null stuff
 	log.Debug("starting ipcmd")
 
-	var inputFiles = []inputFile{}
-
-	switch len(args.InputFiles) {
-	case 0:
-		log.Debug("need to read in os.Stdin")
-		inputFiles = append(inputFiles, inputFile{IsStdin: true})
-	default:
-		tmp, err := getFilesFromArgs(args.InputFiles)
-		if err != nil {
-			log.Fatal("error", err)
-		}
-		for _, f := range tmp {
-			inputFiles = append(inputFiles, inputFile{IsStdin: false, Filename: f})
-		}
+	inputFiles, err := getInputFilesOrStdin(args.InputFiles)
+	if err != nil {
+		log.Error("error getting input filenames", err)
 	}
 
-	// at this point inputFiles is a list of names or stdin
-
-	/*
-		open and process each file. leave room for goroutines.
-		TODO: clean all this up. But it feels ok.
-		TODO: tests
-		TODO: set up writer instead of printf?
-	*/
-
 	for _, fileName := range inputFiles {
-		var idx int                     // line number
-		var foundLines []*foundLineType // lines that do something
-		var IPv4Trie = ipaddr.IPv4AddressTrie{}
-		var IPv6Trie = ipaddr.IPv6AddressTrie{}
-		var matchedLines []*foundLineType
+
+		// create struct to hold whatever comes out of this file
+		fileParseResult := fileParseResults{Filename: fileName.Filename}
 
 		log.Debug("need to load", "file", fileName)
-		if fileName.IsStdin {
-			fileName.Scanner = bufio.NewScanner(os.Stdin)
-		} else {
-			ifh, err := os.Open(fileName.Filename)
-			if err != nil {
-				log.Fatalf("error opening %v\n", fileName.Filename)
-			}
-			defer ifh.Close()
-
-			fileName.Scanner = bufio.NewScanner(ifh)
+		fileName.Scanner, fileName.Closer = getScannerFromFile(fileName)
+		if fileName.Closer != nil { // nil means stdin
+			defer fileName.Closer.Close()
 		}
 
-		//var foundLine *foundLineType
-		var lineObj *foundLineType
 		for fileName.Scanner.Scan() {
-			idx++ // line numbers start at 1
+			fileParseResult.Idx++ // line numbers start at 1
 			line := fileName.Scanner.Text()
 			if len(line) == 0 {
 				continue // skip blank lines
 			}
-			if len(fileName.Filename) == 0 {
-				fileName.Filename = "stdin"
-			}
-			// parse the line into its bits and fill out struct
-			ipMatches := get_ip_addresses_from_line(args.IPRegex, args.addressFamily, line)
-			log.Debugf("regex matches are %+v", ipMatches)
-			lineObj = &foundLineType{Filename: fileName.Filename, Idx: idx, ipRegexMatches: ipMatches, Line: line}
-			foundLines = append(foundLines, lineObj)
+
+			lineObj := &lineParseResult{Idx: fileParseResult.Idx, Line: line}
+			lineObj.ipRegexMatches = get_ip_addresses_from_line(args.IPRegex, args.addressFamily, line)
+			log.Debugf("regex matches are %+v", lineObj.ipRegexMatches)
 
 			// now see if there are condtion matches
-			// append each to foundLine.conditionMatches and set foundline.isMatch
-			for _, m := range ipMatches {
+			// append each to foundLine.conditionMatches
+			// TODO: need to find some way to only print a line once even if it has multiple regex or condition matches
+			for _, m := range lineObj.ipRegexMatches {
 				log.Debugf("looking at %+v for condition match", m)
 
 				// turn it into an IP address
 				ipObject := ipaddr.NewIPAddressString(m).GetAddress()
 				log.Debugf("ip address object of regex match:%+v", ipObject)
 
+				// check conditions
 				switch {
 				case args.Exact:
-					//log.Printf("comparing %v %v for Exact", ipObject, args.Ipaddr)
+					log.Debug("comparing %v %v for Exact", ipObject, args.Ipaddr)
 					if ipObject.Equal(args.Ipaddr) {
-						//log.Printf("found equal match %v:%v", ipObject, lineObj)
-						lineObj.isMatch = true
-						lineObj.conditionMatches = append(lineObj.conditionMatches, ipObject)
-						matchedLines = append(matchedLines, lineObj)
-
-						switch args.addressFamily {
-						case 4:
-							IPv4Trie.Add(ipObject.ToIPv4())
-							//log.Printf("ipv4 trie %v", IPv4Trie)
-
-						case 6:
-							IPv6Trie.Add(ipObject.ToIPv6())
-							//log.Printf("ipv6 trie %v", IPv6Trie)
-
+						if !lineObj.isMatch { // only store the line if it's not already a match
+							fileParseResult.conditionMatchedLines = append(fileParseResult.conditionMatchedLines, lineObj)
+							lineObj.isMatch = true
 						}
+						lineObj.conditionMatches = append(lineObj.conditionMatches, ipObject)
 					} else {
 						log.Debug("does not contain")
 					}
 				case args.Contains:
 					log.Debugf("does %v contain %v", ipObject, args.Ipaddr)
 					if ipObject.Contains(args.Ipaddr) {
-						log.Debug("FOUND contains match %v", ipObject)
-						lineObj.isMatch = true
-						lineObj.conditionMatches = append(lineObj.conditionMatches, ipObject)
-						matchedLines = append(matchedLines, lineObj)
-
-						switch args.addressFamily {
-						case 4:
-							IPv4Trie.Add(ipObject.ToIPv4())
-						case 6:
-							IPv6Trie.Add(ipObject.ToIPv6())
+						if !lineObj.isMatch {
+							fileParseResult.conditionMatchedLines = append(fileParseResult.conditionMatchedLines, lineObj)
+							lineObj.isMatch = true
 						}
+						lineObj.conditionMatches = append(lineObj.conditionMatches, ipObject)
 					} else {
 						log.Debug("does not contain")
 					}
 				case args.Subnet:
 					log.Debugf("does %t contain %t", args.Ipaddr, ipObject)
 					if args.Ipaddr.Contains(ipObject) {
-						log.Debugf("FOUND subnet match %v", ipObject)
-						lineObj.isMatch = true
-						lineObj.conditionMatches = append(lineObj.conditionMatches, ipObject)
-						matchedLines = append(matchedLines, lineObj)
-
-						switch args.addressFamily {
-						case 4:
-							IPv4Trie.Add(ipObject.ToIPv4())
-							//log.Printf("ipv4 trie %v", IPv4Trie)
-
-						case 6:
-							IPv6Trie.Add(ipObject.ToIPv6())
-							//log.Printf("ipv6 trie %v", IPv6Trie)
-
+						if !lineObj.isMatch {
+							fileParseResult.conditionMatchedLines = append(fileParseResult.conditionMatchedLines, lineObj)
+							lineObj.isMatch = true
 						}
+						lineObj.conditionMatches = append(lineObj.conditionMatches, ipObject)
 					} else {
 						log.Debug("does not contain")
 					}
 				}
 			} // for each ipMatch
+			fileName.Closer.Close()
 		} // for filename.Scanner
-
-		// lsm maybe?
-
-		// TODO think about what this really does.
-		var lsm int
-		if args.Longest {
-			for _, lineObj := range matchedLines {
-				for _, cm := range lineObj.conditionMatches {
-					lsm = max(lsm, cm.GetPrefixLen().Len())
-				}
-				lineObj.conditionMatchesLSM = lsm
-			}
-
-			log.Printf("found lsm %v", lsm)
-		}
 
 		switch {
 		case args.Json:
-			b, err := json.MarshalIndent(matchedLines, "", "  ")
+			b, err := json.MarshalIndent(fileParseResult.conditionMatchedLines, "", "  ")
 			if err != nil {
 				log.Error(err)
 			}
 			fmt.Fprintln(w, string(b))
 		case args.Trie:
-			if IPv4Trie.Size() > 0 {
-				fmt.Fprintf(w, "%v\n", IPv4Trie)
+			for _, line := range fileParseResult.conditionMatchedLines {
+				switch args.addressFamily {
+				case 4:
+					for _, pfx := range line.conditionMatches {
+						fileParseResult.IPv4Trie.Add(pfx.ToIPv4())
+					}
+				case 6:
+					for _, pfx := range line.conditionMatches {
+						fileParseResult.IPv6Trie.Add(pfx.ToIPv6())
+					}
+				}
 			}
-			if IPv6Trie.Size() > 0 {
-				fmt.Fprintf(w, "%v\n", IPv6Trie)
-
+			if fileParseResult.IPv4Trie.Size() > 0 {
+				fmt.Fprintf(w, "%v\n", fileParseResult.IPv4Trie)
+			}
+			if fileParseResult.IPv6Trie.Size() > 0 {
+				fmt.Fprintf(w, "%v\n", fileParseResult.IPv4Trie)
 			}
 		default:
-			//log.Info("printing text")
-			for _, line := range matchedLines {
-				fmt.Fprintf(w, "%v:%v:%v:%v\n", line.Filename, line.Idx, line.Line, line.conditionMatchesLSM)
+			log.Debug("printing text")
+			for _, line := range fileParseResult.conditionMatchedLines {
+				fmt.Fprintf(w, "%v:%v:%v\n", fileParseResult.Filename, line.Idx, line.Line)
 			}
 		}
 	} // for fileName range inputFiles
@@ -238,7 +217,7 @@ func get_ip_addresses_from_line(ipre *regexp.Regexp, addressFamily int, line str
 	return ret
 }
 
-func getFilesFromArgs(inputFiles []string) ([]string, error) {
+func getFileNamesFromArgs(inputFiles []string) ([]string, error) {
 	var ret []string
 	for _, ifile := range inputFiles {
 		err := filepath.WalkDir(ifile, func(path string, d fs.DirEntry, err error) error {
