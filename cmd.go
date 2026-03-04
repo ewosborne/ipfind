@@ -100,6 +100,9 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 			if len(line) == 0 {
 				continue // skip blank lines
 			}
+			if len(fileName.Filename) == 0 {
+				fileName.Filename = "stdin"
+			}
 			// parse the line into its bits and fill out struct
 			ipMatches := get_ip_addresses_from_line(args.IPRegex, args.addressFamily, line)
 			log.Debugf("regex matches are %+v", ipMatches)
