@@ -57,7 +57,6 @@ type lineParseResult struct {
 // 	return ret
 // }
 
-// lineObj.ipRegexMatches = get_ip_addresses_from_line(args.IPRegex, args.addressFamily, line)
 func (l *lineParseResult) getRegexMatches(ipre *regexp.Regexp, af int) []string {
 	var ret []string
 	switch af {
@@ -169,7 +168,6 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 			}
 
 			lineObj := &lineParseResult{Idx: fileParseResult.Idx, Line: line}
-			//lineObj.ipRegexMatches = get_ip_addresses_from_line(args.IPRegex, args.addressFamily, line)
 			lineObj.ipRegexMatches = lineObj.getRegexMatches(args.IPRegex, args.addressFamily)
 			log.Debugf("regex matches are %+v", lineObj.ipRegexMatches)
 
