@@ -34,15 +34,15 @@ EXAMPLES
 10.1.1.1/32
 
 
-Match conditions: --exact, --subnets-of, --contains
+Match conditions: --exact/-e, --subnets-of/-s, --contains/-c
 With the --exact/-e flag, ipfind finds the exact network 10.1.0.0/23.  Note that what's passed in is 10.1.0.2/23. ipfind knows to turn this into the 23-bit network 10.1.0.0/23.
+If you want to keep ipfind from turning a network+host bits into its canonical form, pass the argument --no-canonize.
+Then it looks for exactly that bit pattern. This is experimental and I haven't found much use for it so it may not handle corner cases well.
 
 ipfind 10.1.0.2/23 data/docs.txt --exact
 data/docs.txt:2:10.1.0.0/23
 
-
-
-With --subnets-of/-s, ipfind finds all subnets of 10.1.0/0/23. Note that this inclues 10.1.0.0/23 itself.
+With --subnets-of/-s, ipfind finds all subnets of 10.1.0/0/23. This inclues 10.1.0.0/23 itself.
 ipfind 10.1.0.2/23 data/docs.txt --subnets-of
 
 data/docs.txt:1:10.1.1.0/24
@@ -53,7 +53,7 @@ data/docs.txt:8:10.1.1.1/25
 data/docs.txt:9:10.1.1.1/32
 
 
-The --contains/-c flag is the inverse of --subnets-of. It find all networks which contain 10.1.0.0/23. Note that this, too, includes 10.1.0.0/23.
+The --contains/-c flag is the inverse of --subnets-of. It find all networks which contain 10.1.0.0/23. This, too, includes 10.1.0.0/23.
 
 ipfind 10.1.0.2/23 data/docs.txt --contains
 data/docs.txt:2:10.1.0.0/23
