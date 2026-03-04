@@ -42,13 +42,38 @@ type lineParseResult struct {
 	isMatch          bool
 }
 
-type fileParseResult struct {
+type fileParseResultStruct struct {
 	Idx                   int                // line number
 	regexMatchedLines     []*lineParseResult // lines that do something
 	IPv4Trie              ipaddr.IPv4AddressTrie
 	IPv6Trie              ipaddr.IPv6AddressTrie
 	conditionMatchedLines []*lineParseResult
 	Filename              string
+}
+
+func (fp *fileParseResultStruct) getLongestSubnetMask() int {
+	var ret int
+	for _, x := range fp.conditionMatchedLines {
+		for _, y := range x.conditionMatches {
+			ret = max(ret, y.GetPrefixLen().Len())
+		}
+	}
+	return ret
+}
+
+func (fp *fileParseResultStruct) getMinimumConditionMatchLines(minimum int) []*lineParseResult {
+	ret := []*lineParseResult{}
+	for _, x := range fp.conditionMatchedLines {
+	NextLine:
+		for _, y := range x.conditionMatches {
+			if y.GetPrefixLen().Len() >= minimum {
+				ret = append(ret, x)
+				break NextLine
+			}
+		}
+	}
+	return ret
+
 }
 
 // TODO I'm pretty sure there are smarter ways to do this
@@ -97,7 +122,7 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 	for _, fileName := range inputFiles {
 
 		// create struct to hold whatever comes out of this file
-		fileParseResult := fileParseResult{Filename: fileName.Filename}
+		fileParseResult := fileParseResultStruct{Filename: fileName.Filename}
 
 		log.Debug("need to load", "file", fileName)
 		fileName.Scanner, fileName.Closer = getScannerFromFile(fileName)
@@ -166,9 +191,17 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 			fileName.Closer.Close()
 		} // for filename.Scanner
 
+		// TODO build longestConditionMatchedLines and maybe feed that to json and text output but not trie.
+
 		switch {
 		case args.Json:
-			b, err := json.MarshalIndent(fileParseResult.conditionMatchedLines, "", "  ")
+			// TODO make this work with text too,
+			var lsm int
+			if args.Longest {
+				lsm = fileParseResult.getLongestSubnetMask()
+				log.Debug("lsm is %v", lsm)
+			}
+			b, err := json.MarshalIndent(fileParseResult.getMinimumConditionMatchLines(lsm), "", "  ")
 			if err != nil {
 				log.Error(err)
 			}
@@ -193,8 +226,13 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 				fmt.Fprintf(w, "%v\n", fileParseResult.IPv4Trie)
 			}
 		default:
+			var lsm int
+			if args.Longest {
+				lsm = fileParseResult.getLongestSubnetMask()
+				log.Debug("lsm is %v", lsm)
+			}
 			log.Debug("printing text")
-			for _, line := range fileParseResult.conditionMatchedLines {
+			for _, line := range fileParseResult.getMinimumConditionMatchLines(lsm) {
 				fmt.Fprintf(w, "%v:%v:%v\n", fileParseResult.Filename, line.Idx, line.Line)
 			}
 		}
