@@ -1,3 +1,4 @@
+```
 NAME:
    ipfind - search lines for IPv4 addresses and CIDRs
 
@@ -14,3 +15,4 @@ GLOBAL OPTIONS:
    --mask-range value   mask range MIN-MAX to filter candidate CIDRs
    --version, -v        print version and exit
    --help, -h           show help
+```
