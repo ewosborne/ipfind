@@ -62,7 +62,7 @@ func argMassage(cliArgs cliArgStruct) cliArgStruct {
 	// turn target IP into address object
 	cliArgs.Ipaddr = ipaddr.NewIPAddressString(cliArgs.Ipstring).GetAddress()
 	if cliArgs.Ipaddr == nil {
-		log.Fatalf("invalid IP %v", cliArgs.Ipstring)
+		log.Errorf("invalid IP %v", cliArgs.Ipstring)
 	}
 
 	// canonize it unless explicitly disallowed
