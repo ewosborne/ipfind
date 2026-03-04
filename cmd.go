@@ -42,7 +42,7 @@ type lineParseResult struct {
 	isMatch          bool
 }
 
-type fileParseResults struct {
+type fileParseResult struct {
 	Idx                   int                // line number
 	regexMatchedLines     []*lineParseResult // lines that do something
 	IPv4Trie              ipaddr.IPv4AddressTrie
@@ -97,7 +97,7 @@ func ipcmd(w io.Writer, args cliArgStruct) error {
 	for _, fileName := range inputFiles {
 
 		// create struct to hold whatever comes out of this file
-		fileParseResult := fileParseResults{Filename: fileName.Filename}
+		fileParseResult := fileParseResult{Filename: fileName.Filename}
 
 		log.Debug("need to load", "file", fileName)
 		fileName.Scanner, fileName.Closer = getScannerFromFile(fileName)
