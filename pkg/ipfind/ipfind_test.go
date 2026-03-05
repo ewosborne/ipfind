@@ -3,6 +3,7 @@ package ipfind
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -55,6 +56,11 @@ func TestProcessReader(t *testing.T) {
 		{"Empty Lines", "\n\n1.1.1.1\n", "1.1.1.1", "exact", []int{3}, 1},
 		{"Multiple IPs on Line", "1.1.1.1 and 2.2.2.2", "1.1.1.1", "exact", []int{1}, 1},
 		{"Mixed Garbage", "some text 1.2.3.4 more text", "1.2.3.4", "exact", []int{1}, 1},
+
+		// EDGE CASES (IPv6)
+		{"Empty Lines (IPv6)", "\n\n2001:db8::1\n", "2001:db8::1", "exact", []int{3}, 1},
+		{"Multiple IPs on Line (IPv6)", "2001:db8::1 and 2001:db8::2", "2001:db8::1", "exact", []int{1}, 1},
+		{"Mixed Garbage (IPv6)", "some text 2001:db8::1 more text", "2001:db8::1", "exact", []int{1}, 1},
 	}
 
 	for _, tt := range tests {
@@ -144,6 +150,49 @@ func TestWriteBufferedResult(t *testing.T) {
 			t.Errorf("expected JSON to contain line content, got %q", sb.String())
 		}
 	})
+
+	fpIPv6 := &FileResult{
+		InputFile: InputFile{Filename: "test.txt"},
+		MatchedLines: []*LineResult{
+			{
+				Idx:  1,
+				Line: "2001:db8::1",
+				ConditionMatches: []*ipaddr.IPAddress{
+					ipaddr.NewIPAddressString("2001:db8::1").GetAddress(),
+				},
+			},
+		},
+	}
+
+	t.Run("Text Output (IPv6)", func(t *testing.T) {
+		t.Parallel()
+		var sb strings.Builder
+		args := setupTestArgs("2001:db8::1", true, false, false)
+		firstJson := true
+		err := writeBufferedResult(&sb, fpIPv6, args, &firstJson)
+		if err != nil {
+			t.Fatalf("writeBufferedResult failed: %v", err)
+		}
+		expected := "test.txt:1:2001:db8::1\n"
+		if sb.String() != expected {
+			t.Errorf("expected %q, got %q", expected, sb.String())
+		}
+	})
+
+	t.Run("JSON Output (IPv6)", func(t *testing.T) {
+		t.Parallel()
+		var sb strings.Builder
+		args := setupTestArgs("2001:db8::1", true, false, false)
+		args.Json = true
+		firstJson := true
+		err := writeBufferedResult(&sb, fpIPv6, args, &firstJson)
+		if err != nil {
+			t.Fatalf("writeBufferedResult failed: %v", err)
+		}
+		if !strings.Contains(sb.String(), `"Line": "2001:db8::1"`) {
+			t.Errorf("expected JSON to contain line content, got %q", sb.String())
+		}
+	})
 }
 
 func TestRunModes(t *testing.T) {
@@ -162,116 +211,139 @@ func TestRunModes(t *testing.T) {
 		{"Parallel JSON", 2, false, true},
 	}
 
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			// Create a test file per subtest to avoid cleanup race
-			f, _ := os.CreateTemp("", "mode_test_*.txt")
-			defer os.Remove(f.Name())
-			f.WriteString("1.2.3.4\n5.6.7.8\n")
-			f.Close()
+	ipVariants := []struct {
+		suffix   string
+		content  string
+		ipstring string
+		expect1  string
+		expect2  string
+	}{
+		{"IPv4", "1.2.3.4\n5.6.7.8\n", "0.0.0.0/0", "1.2.3.4", "5.6.7.8"},
+		{"IPv6", "2001:db8::1\n2001:db8::2\n", "2001:db8::/32", "2001:db8::1", "2001:db8::2"},
+	}
 
-			args := Args{
-				Ipstring:   "0.0.0.0/0",
-				Subnet:     true,
-				Workers:    tt.workers,
-				Sort:       tt.sort,
-				Json:       tt.json,
-				InputFiles: []string{f.Name()},
-			}
-			args = ArgMassage(args)
+	for _, ipv := range ipVariants {
+		for _, tt := range tests {
+			tt := tt
+			ipv := ipv
+			t.Run(tt.name+" "+ipv.suffix, func(t *testing.T) {
+				t.Parallel()
+				// Create a test file per subtest to avoid cleanup race
+				f, _ := os.CreateTemp("", "mode_test_*.txt")
+				defer os.Remove(f.Name())
+				f.WriteString(ipv.content)
+				f.Close()
 
-			var sb strings.Builder
-			err := Run(context.Background(), &sb, args)
-			if err != nil {
-				t.Fatalf("Run failed: %v", err)
-			}
-
-			output := sb.String()
-			if tt.json {
-				if !strings.HasPrefix(output, "[") || !strings.HasSuffix(strings.TrimSpace(output), "]") {
-					t.Error("JSON output missing array brackets")
+				args := Args{
+					Ipstring:   ipv.ipstring,
+					Subnet:     true,
+					Workers:    tt.workers,
+					Sort:       tt.sort,
+					Json:       tt.json,
+					InputFiles: []string{f.Name()},
 				}
-			} else {
-				if !strings.Contains(output, "1.2.3.4") || !strings.Contains(output, "5.6.7.8") {
-					t.Error("Output missing expected IP matches")
+				args = ArgMassage(args)
+
+				var sb strings.Builder
+				err := Run(context.Background(), &sb, args)
+				if err != nil {
+					t.Fatalf("Run failed: %v", err)
 				}
-			}
-		})
+
+				output := sb.String()
+				if tt.json {
+					if !strings.HasPrefix(output, "[") || !strings.HasSuffix(strings.TrimSpace(output), "]") {
+						t.Error("JSON output missing array brackets")
+					}
+				} else {
+					if !strings.Contains(output, ipv.expect1) || !strings.Contains(output, ipv.expect2) {
+						t.Error("Output missing expected IP matches")
+					}
+				}
+			})
+		}
 	}
 }
 
 func TestGetFileNamesFromArgsSymlinkDir(t *testing.T) {
 	t.Parallel()
-	tmpDir, err := os.MkdirTemp("", "ipfind_sym_test_*")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
 
-	testFile := filepath.Join(tmpDir, "test.txt")
-	os.WriteFile(testFile, []byte("1.2.3.4\n"), 0644)
+	runSymlinkTest := func(t *testing.T, content string) {
+		t.Helper()
+		tmpDir, err := os.MkdirTemp("", "ipfind_sym_test_*")
+		if err != nil {
+			t.Fatalf("failed to create temp dir: %v", err)
+		}
+		defer os.RemoveAll(tmpDir)
 
-	// Create a symlink to the directory
-	symlink := filepath.Join(os.TempDir(), fmt.Sprintf("ipfind_symlink_%d", os.Getpid()))
-	if err := os.Symlink(tmpDir, symlink); err != nil {
-		t.Skipf("skipping symlink test: %v", err)
-	}
-	defer os.Remove(symlink)
+		testFile := filepath.Join(tmpDir, "test.txt")
+		os.WriteFile(testFile, []byte(content), 0644)
 
-	files, err := getFileNamesFromArgs([]string{symlink})
-	if err != nil {
-		t.Fatalf("getFileNamesFromArgs failed: %v", err)
-	}
+		// Create a symlink to the directory (in unique dir to avoid parallel test conflicts)
+		symlinkDir, _ := os.MkdirTemp("", "ipfind_symlink_*")
+		defer os.RemoveAll(symlinkDir)
+		symlink := filepath.Join(symlinkDir, "link")
+		if err := os.Symlink(tmpDir, symlink); err != nil {
+			t.Skipf("skipping symlink test: %v", err)
+		}
 
-	found := false
-	for _, f := range files {
-		// It should find the file inside the symlinked directory
-		if strings.HasSuffix(f, "test.txt") {
-			found = true
-			break
+		files, err := getFileNamesFromArgs([]string{symlink})
+		if err != nil {
+			t.Fatalf("getFileNamesFromArgs failed: %v", err)
+		}
+
+		found := false
+		for _, f := range files {
+			// It should find the file inside the symlinked directory
+			if strings.HasSuffix(f, "test.txt") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("failed to find file inside symlinked directory. Found files: %v", files)
 		}
 	}
-	if !found {
-		t.Errorf("failed to find file inside symlinked directory. Found files: %v", files)
-	}
+
+	t.Run("IPv4", func(t *testing.T) {
+		t.Parallel()
+		runSymlinkTest(t, "1.2.3.4\n")
+	})
+
+	t.Run("IPv6", func(t *testing.T) {
+		t.Parallel()
+		runSymlinkTest(t, "2001:db8::1\n")
+	})
 }
 
 func TestRunJSONIndentation(t *testing.T) {
 	t.Parallel()
 
-	// Create a temporary file to satisfy Run's file-based logic
+	t.Run("IPv4", func(t *testing.T) {
+		t.Parallel()
+		args := setupTestArgs("1.2.3.4", false, false, true) // Subnet mode
+		args.Json = true
 
-	// but we'll use a mocked InputFile for now since Run calls GetInputFilesOrStdin.
-	// Actually, easier to just test the logic inside Run directly by passing it a buffer.
+		tmpFile, err := os.CreateTemp("", "ipfind_test_*.txt")
+		if err != nil {
+			t.Fatalf("failed to create temp file: %v", err)
+		}
+		defer os.Remove(tmpFile.Name())
 
-	args := setupTestArgs("1.2.3.4", false, false, true) // Subnet mode
-	args.Json = true
-	// We need to override the InputFiles to skip the directory walking for this test
-	// and manually trigger the logic. However, Run is hardcoded to use InputFiles from args.
-	// Let's test by creating a small file.
+		if _, err := tmpFile.WriteString("1.2.3.4\n1.2.3.4\n"); err != nil {
+			t.Fatalf("failed to write to temp file: %v", err)
+		}
+		tmpFile.Close()
 
-	tmpFile, err := os.CreateTemp("", "ipfind_test_*.txt")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	defer os.Remove(tmpFile.Name())
+		args.InputFiles = []string{tmpFile.Name()}
 
-	if _, err := tmpFile.WriteString("1.2.3.4\n1.2.3.4\n"); err != nil {
-		t.Fatalf("failed to write to temp file: %v", err)
-	}
-	tmpFile.Close()
+		var sb strings.Builder
+		err = Run(context.Background(), &sb, args)
+		if err != nil {
+			t.Fatalf("Run failed: %v", err)
+		}
 
-	args.InputFiles = []string{tmpFile.Name()}
-
-	var sb strings.Builder
-	err = Run(context.Background(), &sb, args)
-	if err != nil {
-		t.Fatalf("Run failed: %v", err)
-	}
-
-	expected := `[
+		expected := `[
   {
     "Idx": 1,
     "Line": "1.2.3.4"
@@ -282,9 +354,50 @@ func TestRunJSONIndentation(t *testing.T) {
   }
 ]
 `
-	if sb.String() != expected {
-		t.Errorf("JSON output indentation mismatch.\nExpected:\n%q\nGot:\n%q", expected, sb.String())
-	}
+		if sb.String() != expected {
+			t.Errorf("JSON output indentation mismatch.\nExpected:\n%q\nGot:\n%q", expected, sb.String())
+		}
+	})
+
+	t.Run("IPv6", func(t *testing.T) {
+		t.Parallel()
+		args := setupTestArgs("2001:db8::/32", false, false, true) // Subnet mode
+		args.Json = true
+
+		tmpFile, err := os.CreateTemp("", "ipfind_test_*.txt")
+		if err != nil {
+			t.Fatalf("failed to create temp file: %v", err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		if _, err := tmpFile.WriteString("2001:db8::1\n2001:db8::1\n"); err != nil {
+			t.Fatalf("failed to write to temp file: %v", err)
+		}
+		tmpFile.Close()
+
+		args.InputFiles = []string{tmpFile.Name()}
+
+		var sb strings.Builder
+		err = Run(context.Background(), &sb, args)
+		if err != nil {
+			t.Fatalf("Run failed: %v", err)
+		}
+
+		expected := `[
+  {
+    "Idx": 1,
+    "Line": "2001:db8::1"
+  },
+  {
+    "Idx": 2,
+    "Line": "2001:db8::1"
+  }
+]
+`
+		if sb.String() != expected {
+			t.Errorf("JSON output indentation mismatch.\nExpected:\n%q\nGot:\n%q", expected, sb.String())
+		}
+	})
 }
 
 func TestLongestFlag(t *testing.T) {
@@ -345,4 +458,728 @@ func TestLongestFlag(t *testing.T) {
 			t.Errorf("Expected 2 JSON objects, got %d. Output:\n%s", strings.Count(output, "\"Idx\""), output)
 		}
 	})
+
+	// IPv6 variants
+	tmpFileIPv6, err := os.CreateTemp("", "ipfind_longest_ipv6_*.txt")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFileIPv6.Name())
+
+	contentIPv6 := "2001:db8::/32\n2001:db8:1::/48\n2001:db8:2::/48\n"
+	if _, err := tmpFileIPv6.WriteString(contentIPv6); err != nil {
+		t.Fatalf("failed to write to temp file: %v", err)
+	}
+	tmpFileIPv6.Close()
+
+	t.Run("Text Output Longest (IPv6)", func(t *testing.T) {
+		args := setupTestArgs("2001:db8::/32", false, false, true) // Subnet mode
+		args.Longest = true
+		args.InputFiles = []string{tmpFileIPv6.Name()}
+
+		var sb strings.Builder
+		err = Run(context.Background(), &sb, args)
+		if err != nil {
+			t.Fatalf("Run failed: %v", err)
+		}
+
+		output := sb.String()
+		if strings.Contains(output, "2001:db8::/32") {
+			t.Errorf("Output should not contain short prefix /32 when /48 exists. Got:\n%s", output)
+		}
+		if !strings.Contains(output, "2001:db8:1::/48") || !strings.Contains(output, "2001:db8:2::/48") {
+			t.Errorf("Output should contain both longest matches. Got:\n%s", output)
+		}
+	})
+
+	t.Run("JSON Output Longest (IPv6)", func(t *testing.T) {
+		args := setupTestArgs("2001:db8::/32", false, false, true)
+		args.Longest = true
+		args.Json = true
+		args.InputFiles = []string{tmpFileIPv6.Name()}
+
+		var sb strings.Builder
+		err = Run(context.Background(), &sb, args)
+		if err != nil {
+			t.Fatalf("Run failed: %v", err)
+		}
+
+		output := sb.String()
+		if strings.Contains(output, "2001:db8::/32") {
+			t.Errorf("JSON Output should not contain short prefix /32. Got:\n%s", output)
+		}
+		if strings.Count(output, "\"Idx\"") != 2 {
+			t.Errorf("Expected 2 JSON objects, got %d. Output:\n%s", strings.Count(output, "\"Idx\""), output)
+		}
+	})
+}
+
+// --- Fuzz targets ---
+
+func FuzzProcessReader(f *testing.F) {
+	f.Add("1.2.3.4")
+	f.Add("2001:db8::1")
+	f.Add("garbage 999.999.999.999 more")
+	f.Add("log entry 192.168.1.1 from user")
+	f.Add("::1")
+	f.Fuzz(func(t *testing.T, input string) {
+		args := setupTestArgs("0.0.0.0/0", false, false, true)
+		if args.Ipaddr == nil {
+			t.Skip("invalid target IP in setup")
+		}
+		var count int
+		err := ProcessReader(context.Background(), strings.NewReader(input), args,
+			func(lr LineResult) error {
+				count++
+				return nil
+			})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = count // ensure no panic; count is consistent
+	})
+}
+
+func FuzzArgMassage(f *testing.F) {
+	f.Add("1.2.3.4")
+	f.Add("2001:db8::/32")
+	f.Add("x")
+	f.Add("")
+	f.Add("999.999.999.999")
+	f.Fuzz(func(t *testing.T, ipstring string) {
+		args := ArgMassage(Args{Ipstring: ipstring})
+		if args.Ipaddr != nil {
+			_ = args.Ipaddr.String()
+		}
+	})
+}
+
+func FuzzGetRegexMatches(f *testing.F) {
+	f.Add("log entry 192.168.1.1 from user")
+	f.Add("::1")
+	f.Add("1.2.3.4.5")
+	f.Fuzz(func(t *testing.T, line string) {
+		lr := LineResult{Line: line}
+		_ = lr.getRegexMatches(ipv4Regex_noSlash, IPv4)
+		_ = lr.getRegexMatches(ipv6Regex_noSlash, IPv6)
+	})
+}
+
+// --- Trie mode ---
+
+func TestTrieMode(t *testing.T) {
+	t.Parallel()
+
+	t.Run("IPv4", func(t *testing.T) {
+		t.Parallel()
+		tmpFile, err := os.CreateTemp("", "ipfind_trie_*.txt")
+		if err != nil {
+			t.Fatalf("failed to create temp file: %v", err)
+		}
+		defer os.Remove(tmpFile.Name())
+		tmpFile.WriteString("10.0.0.0/24\n10.0.1.0/24\n")
+		tmpFile.Close()
+
+		args := setupTestArgs("10.0.0.0/8", false, false, true)
+		args.Trie = true
+		args.InputFiles = []string{tmpFile.Name()}
+
+		var sb strings.Builder
+		err = Run(context.Background(), &sb, args)
+		if err != nil {
+			t.Fatalf("Run failed: %v", err)
+		}
+		output := sb.String()
+		if output == "" {
+			t.Error("Trie output should not be empty")
+		}
+		if !strings.Contains(output, "10.0.0.0") || !strings.Contains(output, "10.0.1.0") {
+			t.Errorf("Trie output should contain matched prefixes. Got:\n%s", output)
+		}
+	})
+
+	t.Run("IPv6", func(t *testing.T) {
+		t.Parallel()
+		tmpFile, err := os.CreateTemp("", "ipfind_trie_ipv6_*.txt")
+		if err != nil {
+			t.Fatalf("failed to create temp file: %v", err)
+		}
+		defer os.Remove(tmpFile.Name())
+		tmpFile.WriteString("2001:db8::/32\n2001:db8:1::/48\n")
+		tmpFile.Close()
+
+		args := setupTestArgs("2001:db8::/16", false, false, true)
+		args.Trie = true
+		args.InputFiles = []string{tmpFile.Name()}
+
+		var sb strings.Builder
+		err = Run(context.Background(), &sb, args)
+		if err != nil {
+			t.Fatalf("Run failed: %v", err)
+		}
+		output := sb.String()
+		if output == "" {
+			t.Error("Trie output should not be empty")
+		}
+		if !strings.Contains(output, "2001:db8") {
+			t.Errorf("Trie output should contain matched prefixes. Got:\n%s", output)
+		}
+	})
+}
+
+// --- Slash flag ---
+
+func TestSlashFlag(t *testing.T) {
+	t.Parallel()
+
+	tmpFile, err := os.CreateTemp("", "ipfind_slash_*.txt")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	tmpFile.WriteString("10.0.0.1\n10.0.0.0/8\n192.168.1.1\n")
+	tmpFile.Close()
+
+	args := Args{
+		Ipstring:   "10.0.0.0/8",
+		Subnet:     true,
+		Slash:      true,
+		Canonize:   true,
+		InputFiles: []string{tmpFile.Name()},
+	}
+	args = ArgMassage(args)
+
+	var sb strings.Builder
+	err = Run(context.Background(), &sb, args)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	output := sb.String()
+	// With Slash=true, only CIDR notation matches; 10.0.0.1 and 192.168.1.1 should NOT match
+	if strings.Contains(output, "10.0.0.1") || strings.Contains(output, "192.168.1.1") {
+		t.Errorf("Slash mode should not match plain IPs. Got:\n%s", output)
+	}
+	if !strings.Contains(output, "10.0.0.0/8") {
+		t.Errorf("Slash mode should match CIDR. Got:\n%s", output)
+	}
+}
+
+// --- Canonize=false ---
+
+func TestCanonizeDisabled(t *testing.T) {
+	t.Parallel()
+
+	args := setupTestArgs("192.168.1.0/24", false, false, true)
+	args.Canonize = false
+	args = ArgMassage(args)
+
+	// With canonize disabled, target stays as 192.168.1.0/24 (prefix block)
+	// 192.168.1.5 should still match in subnet mode
+	input := "192.168.1.5"
+	var matched bool
+	err := ProcessReader(context.Background(), strings.NewReader(input), args,
+		func(lr LineResult) error {
+			matched = true
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("ProcessReader failed: %v", err)
+	}
+	if !matched {
+		t.Error("Expected match for 192.168.1.5 in subnet 192.168.1.0/24")
+	}
+}
+
+// --- Invalid IP ---
+
+func TestInvalidIP(t *testing.T) {
+	t.Parallel()
+
+	args := ArgMassage(Args{Ipstring: "not-an-ip"})
+	if args.Ipaddr != nil {
+		t.Error("Invalid IP should result in nil Ipaddr")
+	}
+
+	args = ArgMassage(Args{Ipstring: ""})
+	// Empty string may or may not produce nil depending on library; ensure no panic
+
+	// ProcessReader with nil Ipaddr should not panic
+	args = ArgMassage(Args{Ipstring: "invalid"})
+	var count int
+	err := ProcessReader(context.Background(), strings.NewReader("1.2.3.4"), args,
+		func(lr LineResult) error {
+			count++
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("ProcessReader should not fail: %v", err)
+	}
+	if count > 0 {
+		t.Error("With nil Ipaddr, no matches should occur")
+	}
+}
+
+// --- Context cancellation ---
+
+func TestProcessReaderContextCancellation(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	args := setupTestArgs("0.0.0.0/0", false, false, true)
+	err := ProcessReader(ctx, strings.NewReader("1.2.3.4\n2.3.4.5\n"), args,
+		func(lr LineResult) error { return nil })
+	if err != context.Canceled {
+		t.Errorf("expected context.Canceled, got %v", err)
+	}
+}
+
+func TestProcessReaderOnMatchError(t *testing.T) {
+	t.Parallel()
+
+	args := setupTestArgs("0.0.0.0/0", false, false, true)
+	errSentinel := fmt.Errorf("onMatch error")
+	callCount := 0
+	err := ProcessReader(context.Background(), strings.NewReader("1.2.3.4\n2.3.4.5\n"), args,
+		func(lr LineResult) error {
+			callCount++
+			return errSentinel
+		})
+	if err != errSentinel {
+		t.Errorf("expected onMatch error to propagate, got %v", err)
+	}
+	if callCount != 1 {
+		t.Errorf("expected onMatch to be called once before error, got %d", callCount)
+	}
+}
+
+// --- GetInputFilesOrStdin ---
+
+func TestGetInputFilesOrStdin(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Empty returns stdin", func(t *testing.T) {
+		t.Parallel()
+		files, err := GetInputFilesOrStdin([]string{})
+		if err != nil {
+			t.Fatalf("GetInputFilesOrStdin failed: %v", err)
+		}
+		if len(files) != 1 || !files[0].IsStdin {
+			t.Errorf("expected stdin InputFile, got %v", files)
+		}
+	})
+
+	t.Run("With files", func(t *testing.T) {
+		t.Parallel()
+		tmpFile, err := os.CreateTemp("", "ipfind_gifs_*.txt")
+		if err != nil {
+			t.Fatalf("failed to create temp file: %v", err)
+		}
+		tmpFile.Close()
+		defer os.Remove(tmpFile.Name())
+
+		files, err := GetInputFilesOrStdin([]string{tmpFile.Name()})
+		if err != nil {
+			t.Fatalf("GetInputFilesOrStdin failed: %v", err)
+		}
+		if len(files) != 1 || files[0].IsStdin {
+			t.Errorf("expected single file InputFile, got %v", files)
+		}
+		if files[0].Filename != tmpFile.Name() {
+			t.Errorf("expected filename %q, got %q", tmpFile.Name(), files[0].Filename)
+		}
+	})
+
+	t.Run("Nonexistent path returns error", func(t *testing.T) {
+		t.Parallel()
+		_, err := GetInputFilesOrStdin([]string{"/nonexistent/path/that/does/not/exist"})
+		if err == nil {
+			t.Error("expected error for nonexistent path")
+		}
+	})
+}
+
+// --- getFileNamesFromArgs ---
+
+func TestGetFileNamesFromArgs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Nonexistent path returns error", func(t *testing.T) {
+		t.Parallel()
+		_, err := getFileNamesFromArgs([]string{"/nonexistent/path/that/does/not/exist"})
+		if err == nil {
+			t.Error("expected error for nonexistent path")
+		}
+	})
+
+	t.Run("Plain directory walks files", func(t *testing.T) {
+		t.Parallel()
+		tmpDir, err := os.MkdirTemp("", "ipfind_dir_*")
+		if err != nil {
+			t.Fatalf("failed to create temp dir: %v", err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		f1 := filepath.Join(tmpDir, "a.txt")
+		f2 := filepath.Join(tmpDir, "b.txt")
+		os.WriteFile(f1, []byte("1.2.3.4"), 0644)
+		os.WriteFile(f2, []byte("5.6.7.8"), 0644)
+
+		files, err := getFileNamesFromArgs([]string{tmpDir})
+		if err != nil {
+			t.Fatalf("getFileNamesFromArgs failed: %v", err)
+		}
+		if len(files) != 2 {
+			t.Errorf("expected 2 files, got %d: %v", len(files), files)
+		}
+	})
+
+	t.Run("Nested directory walks recursively", func(t *testing.T) {
+		t.Parallel()
+		tmpDir, err := os.MkdirTemp("", "ipfind_nested_*")
+		if err != nil {
+			t.Fatalf("failed to create temp dir: %v", err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		subDir := filepath.Join(tmpDir, "sub")
+		os.Mkdir(subDir, 0755)
+		os.WriteFile(filepath.Join(tmpDir, "root.txt"), []byte("1.2.3.4"), 0644)
+		os.WriteFile(filepath.Join(subDir, "nested.txt"), []byte("5.6.7.8"), 0644)
+
+		files, err := getFileNamesFromArgs([]string{tmpDir})
+		if err != nil {
+			t.Fatalf("getFileNamesFromArgs failed: %v", err)
+		}
+		if len(files) != 2 {
+			t.Errorf("expected 2 files, got %d: %v", len(files), files)
+		}
+	})
+}
+
+// --- GetReadCloser errors ---
+
+func TestGetReadCloserErrors(t *testing.T) {
+	t.Parallel()
+
+	_, err := GetReadCloser(InputFile{Filename: "/nonexistent/path/that/does/not/exist"})
+	if err == nil {
+		t.Error("expected error for nonexistent file")
+	}
+
+	tmpDir, err := os.MkdirTemp("", "ipfind_read_*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	_, err = GetReadCloser(InputFile{Filename: tmpDir})
+	if err == nil {
+		t.Error("expected error when opening directory")
+	}
+}
+
+// --- Run with stdin ---
+
+func TestRunWithStdin(t *testing.T) {
+	// Do not run in parallel - we replace os.Stdin
+	oldStdin := os.Stdin
+	defer func() { os.Stdin = oldStdin }()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("Pipe failed: %v", err)
+	}
+	os.Stdin = r
+
+	w.WriteString("1.2.3.4\n5.6.7.8\n")
+	w.Close()
+
+	args := setupTestArgs("0.0.0.0/0", false, false, true)
+	args.InputFiles = []string{}
+
+	var sb strings.Builder
+	err = Run(context.Background(), &sb, args)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	output := sb.String()
+	if !strings.Contains(output, "1.2.3.4") || !strings.Contains(output, "5.6.7.8") {
+		t.Errorf("expected stdin content in output, got %q", output)
+	}
+}
+
+// --- Run skips failed files ---
+
+func TestRunSkipsFailedFiles(t *testing.T) {
+	t.Parallel()
+
+	tmpDir, err := os.MkdirTemp("", "ipfind_skip_*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	validFile := filepath.Join(tmpDir, "valid.txt")
+	os.WriteFile(validFile, []byte("1.2.3.4\n"), 0644)
+
+	brokenSymlink := filepath.Join(tmpDir, "broken")
+	if err := os.Symlink("/nonexistent/target", brokenSymlink); err != nil {
+		t.Skipf("skipping: cannot create symlink: %v", err)
+	}
+
+	args := setupTestArgs("0.0.0.0/0", false, false, true)
+	args.InputFiles = []string{tmpDir}
+
+	var sb strings.Builder
+	err = Run(context.Background(), &sb, args)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	if !strings.Contains(sb.String(), "1.2.3.4") {
+		t.Error("Run should process valid file after skipping broken symlink")
+	}
+}
+
+// --- Empty / no-match files ---
+
+func TestEmptyAndNoMatchFiles(t *testing.T) {
+	t.Parallel()
+
+	tmpFile, err := os.CreateTemp("", "ipfind_empty_*.txt")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	tmpFile.Close()
+
+	args := setupTestArgs("1.2.3.4", true, false, false)
+	args.InputFiles = []string{tmpFile.Name()}
+
+	var sb strings.Builder
+	err = Run(context.Background(), &sb, args)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	if sb.Len() != 0 {
+		t.Errorf("expected empty output for empty file, got %q", sb.String())
+	}
+
+	// No-match file
+	tmpFile2, _ := os.CreateTemp("", "ipfind_nomatch_*.txt")
+	tmpFile2.WriteString("5.6.7.8\n")
+	tmpFile2.Close()
+	defer os.Remove(tmpFile2.Name())
+
+	args.InputFiles = []string{tmpFile2.Name()}
+	sb.Reset()
+	err = Run(context.Background(), &sb, args)
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	if sb.Len() != 0 {
+		t.Errorf("expected empty output for no-match file, got %q", sb.String())
+	}
+}
+
+// --- Mixed IPv4/IPv6 ---
+
+func TestMixedAddressFamily(t *testing.T) {
+	t.Parallel()
+
+	input := "1.2.3.4\n2001:db8::1\n"
+	args := setupTestArgs("1.2.3.4", true, false, false)
+
+	var matched []string
+	err := ProcessReader(context.Background(), strings.NewReader(input), args,
+		func(lr LineResult) error {
+			matched = append(matched, lr.Line)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("ProcessReader failed: %v", err)
+	}
+	if len(matched) != 1 || matched[0] != "1.2.3.4" {
+		t.Errorf("IPv4 target should only match IPv4 line, got %v", matched)
+	}
+
+	args = setupTestArgs("2001:db8::1", true, false, false)
+	matched = nil
+	err = ProcessReader(context.Background(), strings.NewReader(input), args,
+		func(lr LineResult) error {
+			matched = append(matched, lr.Line)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("ProcessReader failed: %v", err)
+	}
+	if len(matched) != 1 || matched[0] != "2001:db8::1" {
+		t.Errorf("IPv6 target should only match IPv6 line, got %v", matched)
+	}
+}
+
+// --- MatchesCondition ---
+
+func TestMatchesCondition(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		ipStr    string
+		targetStr string
+		exact    bool
+		contains bool
+		subnet   bool
+		want     bool
+	}{
+		{"exact match", "1.2.3.4", "1.2.3.4", true, false, false, true},
+		{"exact no match", "1.2.3.5", "1.2.3.4", true, false, false, false},
+		{"contains match", "10.0.0.0/8", "10.0.0.1", false, true, false, true},
+		{"contains no match", "10.0.0.0/24", "10.0.1.1", false, true, false, false},
+		{"subnet match", "192.168.1.5", "192.168.1.0/24", false, false, true, true},
+		{"subnet no match", "192.167.1.5", "192.168.1.0/24", false, false, true, false},
+		{"IPv6 exact", "2001:db8::1", "2001:db8::1", true, false, false, true},
+		{"IPv6 subnet", "2001:db8::dead", "2001:db8::/32", false, false, true, true},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ipObj := ipaddr.NewIPAddressString(tt.ipStr).GetAddress()
+			targetObj := ipaddr.NewIPAddressString(tt.targetStr).GetAddress()
+			if ipObj == nil || targetObj == nil {
+				t.Skip("invalid IP in test case")
+			}
+			args := Args{Exact: tt.exact, Contains: tt.contains, Subnet: tt.subnet}
+			got := MatchesCondition(ipObj, targetObj, args)
+			if got != tt.want {
+				t.Errorf("MatchesCondition(%q, %q) = %v, want %v", tt.ipStr, tt.targetStr, got, tt.want)
+			}
+		})
+	}
+}
+
+// --- getLongestSubnetMask, getMinimumConditionMatchLines ---
+
+func TestGetLongestSubnetMask(t *testing.T) {
+	t.Parallel()
+
+	fp := &FileResult{
+		MatchedLines: []*LineResult{
+			{ConditionMatches: []*ipaddr.IPAddress{
+				ipaddr.NewIPAddressString("10.0.0.0/8").GetAddress(),
+				ipaddr.NewIPAddressString("10.1.0.0/16").GetAddress(),
+			}},
+		},
+	}
+	got := fp.getLongestSubnetMask()
+	if got != 16 {
+		t.Errorf("getLongestSubnetMask = %d, want 16", got)
+	}
+}
+
+func TestGetMinimumConditionMatchLines(t *testing.T) {
+	t.Parallel()
+
+	fp := &FileResult{
+		MatchedLines: []*LineResult{
+			{ConditionMatches: []*ipaddr.IPAddress{
+				ipaddr.NewIPAddressString("10.0.0.0/8").GetAddress(),
+			}},
+			{ConditionMatches: []*ipaddr.IPAddress{
+				ipaddr.NewIPAddressString("10.1.0.0/24").GetAddress(),
+			}},
+		},
+	}
+	lines := fp.getMinimumConditionMatchLines(16)
+	if len(lines) != 1 {
+		t.Errorf("getMinimumConditionMatchLines(16) = %d lines, want 1", len(lines))
+	}
+	if len(lines) > 0 && len(lines[0].ConditionMatches) > 0 {
+		pl := lines[0].ConditionMatches[0].GetPrefixLen().Len()
+		if pl != 24 {
+			t.Errorf("expected /24 line, got prefix len %d", pl)
+		}
+	}
+}
+
+// --- Regex edge cases ---
+
+func TestRegexEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		input  string
+		target string
+		mode   string
+		want   bool
+	}{
+		{"IPv6 compressed", "::1", "::1", "exact", true},
+		{"IPv6 expanded", "0:0:0:0:0:0:0:1", "::1", "exact", true},
+		{"IPv4 standard", "10.10.10.10", "10.10.10.10", "exact", true},
+		{"malformed IPv4 high octet", "1.2.3.256", "1.2.3.4", "exact", false},
+		{"malformed IPv4 short", "1.2.3", "1.2.3.4", "exact", false},
+		{"IPv6 standard", "2001:db8::1", "2001:db8::1", "exact", true},
+		{"URL with IP", "http://192.168.1.1/path", "192.168.1.1", "exact", true},
+		{"log format", "[2024-01-01] 10.0.0.1 connected", "10.0.0.1", "exact", true},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			args := setupTestArgs(tt.target, tt.mode == "exact", tt.mode == "contains", tt.mode == "subnet")
+			var matched bool
+			err := ProcessReader(context.Background(), strings.NewReader(tt.input), args,
+				func(lr LineResult) error {
+					matched = true
+					return nil
+				})
+			if err != nil {
+				t.Fatalf("ProcessReader failed: %v", err)
+			}
+			if matched != tt.want {
+				t.Errorf("input %q target %q: got match=%v, want %v", tt.input, tt.target, matched, tt.want)
+			}
+		})
+	}
+}
+
+// --- Property-based tests with random IPs ---
+
+func TestPropertyBasedMatchesCondition(t *testing.T) {
+	t.Parallel()
+
+	rng := rand.New(rand.NewSource(42))
+	for i := 0; i < 100; i++ {
+		// Random IPv4
+		a, b, c, d := rng.Intn(256), rng.Intn(256), rng.Intn(256), rng.Intn(256)
+		ipStr := fmt.Sprintf("%d.%d.%d.%d", a, b, c, d)
+		args := Args{Exact: true, Contains: false, Subnet: false}
+		ipObj := ipaddr.NewIPAddressString(ipStr).GetAddress()
+		if ipObj == nil {
+			continue
+		}
+		got := MatchesCondition(ipObj, ipObj, args)
+		if !got {
+			t.Errorf("exact match of %q with itself should be true", ipStr)
+		}
+	}
+
+	// Random IPv6 - use documentation prefix and random suffix
+	for i := 0; i < 50; i++ {
+		h := rng.Uint32()
+		ipStr := fmt.Sprintf("2001:db8::%x", h)
+		args := Args{Exact: true, Contains: false, Subnet: false}
+		ipObj := ipaddr.NewIPAddressString(ipStr).GetAddress()
+		if ipObj == nil {
+			continue
+		}
+		got := MatchesCondition(ipObj, ipObj, args)
+		if !got {
+			t.Errorf("exact match of %q with itself should be true", ipStr)
+		}
+	}
 }
