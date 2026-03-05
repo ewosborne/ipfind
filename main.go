@@ -64,6 +64,18 @@ func main() {
 				Destination: &cliArgs.Canonize,
 				Value:       true,
 			},
+			&cli.IntFlag{
+				Name:        "workers",
+				Aliases:     []string{"p"},
+				Usage:       "Number of parallel workers (0 = 2 per CPU)",
+				Destination: &cliArgs.Workers,
+				Value:       0,
+			},
+			&cli.BoolFlag{
+				Name:        "sort",
+				Usage:       "Sort output by filename",
+				Destination: &cliArgs.Sort,
+			},
 		},
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
 			{
