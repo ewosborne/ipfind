@@ -4,9 +4,9 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"log"
 	"os"
 
+	"github.com/charmbracelet/log"
 	"github.com/urfave/cli/v3"
 )
 
@@ -125,6 +125,12 @@ func main() {
 
 			// 1. call argMassage to fix up args
 			// 2. call ipcmd(args) to do stuff
+
+			if cliArgs.Debug {
+				log.SetLevel(log.DebugLevel)
+			} else {
+				log.SetLevel(log.InfoLevel)
+			}
 
 			cliArgs := argMassage(cliArgs)
 			// fmt.Printf("massaged args:%+v\n", cliArgs)
