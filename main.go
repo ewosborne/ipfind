@@ -4,10 +4,10 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"os"
-
 	"github.com/charmbracelet/log"
+	"github.com/ewosborne/ipfind/pkg/ipfind"
 	"github.com/urfave/cli/v3"
+	"os"
 )
 
 //go:embed RootCommandHelpTemplate.txt
@@ -15,7 +15,7 @@ var h string
 
 func main() {
 
-	var cliArgs cliArgStruct
+	var cliArgs ipfind.Args
 
 	cli.RootCommandHelpTemplate = fmt.Sprintf(`%s
 %s
@@ -25,7 +25,7 @@ func main() {
 		fmt.Printf("version=%s\n", cmd.Root().Version)
 	}
 	app := &cli.Command{
-		Version:                "0.0.2",
+		Version:                "0.1.0",
 		UseShortOptionHandling: true,
 		EnableShellCompletion:  true,
 		Name:                   "ipfind",
@@ -64,12 +64,6 @@ func main() {
 				Destination: &cliArgs.Canonize,
 				Value:       true,
 			},
-			// &cli.BoolWithInverseFlag{
-			// 	Name:        "slash",
-			// 	Usage:       `Require a subnet mask to recognize a host`,
-			// 	Destination: &cliArgs.Slash,
-			// 	Value:       true,
-			// },
 		},
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{
 			{
@@ -118,26 +112,18 @@ func main() {
 							Destination: &cliArgs.Contains,
 						},
 					},
-				}, // Flags:
+				},
 			},
-		}, // MutuallyExclusiveFlags:
+		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-
-			// 1. call argMassage to fix up args
-			// 2. call ipcmd(args) to do stuff
-
 			if cliArgs.Debug {
 				log.SetLevel(log.DebugLevel)
 			} else {
 				log.SetLevel(log.InfoLevel)
 			}
 
-			cliArgs := argMassage(cliArgs)
-			// fmt.Printf("massaged args:%+v\n", cliArgs)
-
-			// run the command
-			//return ipcmd(os.Stdout, cliArgs)
-			return ipcmd(os.Stdout, cliArgs)
+			cliArgs = ipfind.ArgMassage(cliArgs)
+			return ipfind.Run(ctx, os.Stdout, cliArgs)
 		},
 	}
 
