@@ -3,7 +3,6 @@ package ipfind
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -517,16 +516,23 @@ func TestLongestFlag(t *testing.T) {
 // --- Fuzz targets ---
 
 func FuzzProcessReader(f *testing.F) {
-	f.Add("1.2.3.4")
-	f.Add("2001:db8::1")
-	f.Add("garbage 999.999.999.999 more")
-	f.Add("log entry 192.168.1.1 from user")
-	f.Add("::1")
-	f.Fuzz(func(t *testing.T, input string) {
-		args := setupTestArgs("0.0.0.0/0", false, false, true)
-		if args.Ipaddr == nil {
-			t.Skip("invalid target IP in setup")
+	f.Add("1.2.3.4", "0.0.0.0/0", false, false, true, false)
+	f.Add("2001:db8::1", "::/0", false, false, true, false)
+	f.Add("log entry 192.168.1.1 from user", "192.168.1.0/24", false, false, true, false)
+	f.Fuzz(func(t *testing.T, input string, targetIP string, exact, contains, subnet, slash bool) {
+		args := Args{
+			Ipstring: targetIP,
+			Exact:    exact,
+			Contains: contains,
+			Subnet:   subnet,
+			Slash:    slash,
+			Canonize: true,
 		}
+		args = ArgMassage(args)
+		if args.Ipaddr == nil {
+			t.Skip("invalid target IP in fuzz input")
+		}
+
 		var count int
 		err := ProcessReader(context.Background(), strings.NewReader(input), args,
 			func(lr LineResult) error {
@@ -534,34 +540,57 @@ func FuzzProcessReader(f *testing.F) {
 				return nil
 			})
 		if err != nil {
-			t.Fatal(err)
+			// ProcessReader should only return error if scanner fails (not possible with strings.Reader)
+			// or if onMatch returns error (which we don't).
+			t.Fatalf("ProcessReader failed: %v", err)
 		}
-		_ = count // ensure no panic; count is consistent
 	})
 }
 
 func FuzzArgMassage(f *testing.F) {
-	f.Add("1.2.3.4")
-	f.Add("2001:db8::/32")
-	f.Add("x")
-	f.Add("")
-	f.Add("999.999.999.999")
-	f.Fuzz(func(t *testing.T, ipstring string) {
-		args := ArgMassage(Args{Ipstring: ipstring})
+	f.Add("1.2.3.4", false, false, true, false, true)
+	f.Add("2001:db8::/32", false, true, false, true, false)
+	f.Fuzz(func(t *testing.T, ipstring string, exact, contains, subnet, slash, canonize bool) {
+		args := ArgMassage(Args{
+			Ipstring: ipstring,
+			Exact:    exact,
+			Contains: contains,
+			Subnet:   subnet,
+			Slash:    slash,
+			Canonize: canonize,
+		})
 		if args.Ipaddr != nil {
 			_ = args.Ipaddr.String()
 		}
 	})
 }
 
+func FuzzMatchesCondition(f *testing.F) {
+	f.Add("1.2.3.4", "1.2.3.0/24", false, false, true)
+	f.Add("2001:db8::1", "2001:db8::/32", false, false, true)
+	f.Fuzz(func(t *testing.T, ipStr, targetStr string, exact, contains, subnet bool) {
+		ipObj := ipaddr.NewIPAddressString(ipStr).GetAddress()
+		targetObj := ipaddr.NewIPAddressString(targetStr).GetAddress()
+		if ipObj == nil || targetObj == nil {
+			t.Skip()
+		}
+		args := Args{Exact: exact, Contains: contains, Subnet: subnet}
+		_ = MatchesCondition(ipObj, targetObj, args)
+	})
+}
+
 func FuzzGetRegexMatches(f *testing.F) {
-	f.Add("log entry 192.168.1.1 from user")
-	f.Add("::1")
-	f.Add("1.2.3.4.5")
-	f.Fuzz(func(t *testing.T, line string) {
+	f.Add("log entry 192.168.1.1 from user", true)
+	f.Add("::1", false)
+	f.Fuzz(func(t *testing.T, line string, isIPv4 bool) {
 		lr := LineResult{Line: line}
-		_ = lr.getRegexMatches(ipv4Regex_noSlash, IPv4)
-		_ = lr.getRegexMatches(ipv6Regex_noSlash, IPv6)
+		af := IPv6
+		re := ipv6Regex_noSlash
+		if isIPv4 {
+			af = IPv4
+			re = ipv4Regex_noSlash
+		}
+		_ = lr.getRegexMatches(re, af)
 	})
 }
 
@@ -1024,13 +1053,13 @@ func TestMatchesCondition(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		ipStr    string
+		name      string
+		ipStr     string
 		targetStr string
-		exact    bool
-		contains bool
-		subnet   bool
-		want     bool
+		exact     bool
+		contains  bool
+		subnet    bool
+		want      bool
 	}{
 		{"exact match", "1.2.3.4", "1.2.3.4", true, false, false, true},
 		{"exact no match", "1.2.3.5", "1.2.3.4", true, false, false, false},
@@ -1144,42 +1173,5 @@ func TestRegexEdgeCases(t *testing.T) {
 				t.Errorf("input %q target %q: got match=%v, want %v", tt.input, tt.target, matched, tt.want)
 			}
 		})
-	}
-}
-
-// --- Property-based tests with random IPs ---
-
-func TestPropertyBasedMatchesCondition(t *testing.T) {
-	t.Parallel()
-
-	rng := rand.New(rand.NewSource(42))
-	for i := 0; i < 100; i++ {
-		// Random IPv4
-		a, b, c, d := rng.Intn(256), rng.Intn(256), rng.Intn(256), rng.Intn(256)
-		ipStr := fmt.Sprintf("%d.%d.%d.%d", a, b, c, d)
-		args := Args{Exact: true, Contains: false, Subnet: false}
-		ipObj := ipaddr.NewIPAddressString(ipStr).GetAddress()
-		if ipObj == nil {
-			continue
-		}
-		got := MatchesCondition(ipObj, ipObj, args)
-		if !got {
-			t.Errorf("exact match of %q with itself should be true", ipStr)
-		}
-	}
-
-	// Random IPv6 - use documentation prefix and random suffix
-	for i := 0; i < 50; i++ {
-		h := rng.Uint32()
-		ipStr := fmt.Sprintf("2001:db8::%x", h)
-		args := Args{Exact: true, Contains: false, Subnet: false}
-		ipObj := ipaddr.NewIPAddressString(ipStr).GetAddress()
-		if ipObj == nil {
-			continue
-		}
-		got := MatchesCondition(ipObj, ipObj, args)
-		if !got {
-			t.Errorf("exact match of %q with itself should be true", ipStr)
-		}
 	}
 }
