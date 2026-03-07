@@ -1087,6 +1087,17 @@ func TestMatchesCondition(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("default case", func(t *testing.T) {
+		t.Parallel()
+		ipObj := ipaddr.NewIPAddressString("1.2.3.4").GetAddress()
+		targetObj := ipaddr.NewIPAddressString("1.2.3.4").GetAddress()
+		args := Args{} // No mode flags set
+		got := MatchesCondition(ipObj, targetObj, args)
+		if got != false {
+			t.Error("MatchesCondition with no flags should return false")
+		}
+	})
 }
 
 // --- getLongestSubnetMask, getMinimumConditionMatchLines ---
@@ -1174,4 +1185,186 @@ func TestRegexEdgeCases(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRunSequentialModes(t *testing.T) {
+	t.Parallel()
+
+	t.Run("JSON output multi-line", func(t *testing.T) {
+		tmpFile, _ := os.CreateTemp("", "seq_json_*.txt")
+		defer os.Remove(tmpFile.Name())
+		tmpFile.WriteString("1.2.3.4\n1.2.3.5\n")
+		tmpFile.Close()
+
+		args := setupTestArgs("1.2.3.0/24", false, false, true)
+		args.Json = true
+		args.Workers = 1
+		args.InputFiles = []string{tmpFile.Name()}
+
+		var sb strings.Builder
+		err := Run(context.Background(), &sb, args)
+		if err != nil {
+			t.Fatalf("Run failed: %v", err)
+		}
+		output := sb.String()
+		if !strings.HasPrefix(output, "[") || !strings.Contains(output, ",") || !strings.HasSuffix(strings.TrimSpace(output), "]") {
+			t.Errorf("JSON output format incorrect for sequential mode:\n%s", output)
+		}
+	})
+
+	t.Run("Skips invalid files", func(t *testing.T) {
+		tmpDir, _ := os.MkdirTemp("", "seq_skip_*.txt")
+		defer os.RemoveAll(tmpDir)
+
+		args := setupTestArgs("1.2.3.4", true, false, false)
+		args.Workers = 1
+		// Passing a directory as a file argument.
+		// getFileNamesFromArgs will return the directory path if it's explicitly passed (not walked).
+		// Wait, if I pass it explicitly, os.Stat(ifile) is IsDir, and it walks it.
+		// If the dir is empty, ret will be empty.
+
+		// Let's use a file we can't open (like a directory) by passing it as a single file.
+		// Actually, GetInputFilesOrStdin calls getFileNamesFromArgs.
+
+		validFile, _ := os.CreateTemp("", "valid_*.txt")
+		validFile.WriteString("1.2.3.4\n")
+		validFile.Close()
+		defer os.Remove(validFile.Name())
+
+		// We'll use the existing TestRunSkipsFailedFiles logic but force sequential
+		args.InputFiles = []string{validFile.Name()}
+		// To trigger the error branch in runSequential, we need GetReadCloser to fail.
+		// We can achieve this by passing a directory path directly in InputFiles list
+		// but since Run calls GetInputFilesOrStdin, it might be tricky.
+
+		// Let's just call runSequential directly if we want to test its internals.
+		inputFiles := []InputFile{
+			{Filename: "/nonexistent/file"}, // This will fail GetReadCloser
+			{Filename: validFile.Name()},    // This will succeed
+		}
+
+		var sb strings.Builder
+		err := runSequential(context.Background(), &sb, inputFiles, args)
+		if err != nil {
+			t.Fatalf("runSequential should not fail when skipping files: %v", err)
+		}
+		if !strings.Contains(sb.String(), "1.2.3.4") {
+			t.Error("runSequential failed to process valid file after error")
+		}
+	})
+
+	t.Run("Trie mode sequential", func(t *testing.T) {
+		tmpFile, _ := os.CreateTemp("", "seq_trie_*.txt")
+		defer os.Remove(tmpFile.Name())
+		tmpFile.WriteString("10.0.0.1\n")
+		tmpFile.Close()
+
+		args := setupTestArgs("10.0.0.0/8", false, false, true)
+		args.Trie = true
+		args.Workers = 1
+		args.InputFiles = []string{tmpFile.Name()}
+
+		var sb strings.Builder
+		err := Run(context.Background(), &sb, args)
+		if err != nil {
+			t.Fatalf("Run failed: %v", err)
+		}
+		if !strings.Contains(sb.String(), "10.0.0.1") {
+			t.Errorf("Trie sequential output missing match: %s", sb.String())
+		}
+	})
+}
+
+func TestRunParallelErrorHandling(t *testing.T) {
+	t.Parallel()
+
+	validFile, _ := os.CreateTemp("", "parallel_valid_*.txt")
+	validFile.WriteString("1.2.3.4\n")
+	validFile.Close()
+	defer os.Remove(validFile.Name())
+
+	args := setupTestArgs("1.2.3.4", true, false, false)
+	args.Workers = 2
+
+	inputFiles := []InputFile{
+		{Filename: "/nonexistent/file/parallel"}, // Fail GetReadCloser
+		{Filename: validFile.Name()},             // Success
+	}
+
+	var sb strings.Builder
+	err := runParallel(context.Background(), &sb, inputFiles, args)
+	if err != nil {
+		t.Fatalf("runParallel should not fail when skipping files: %v", err)
+	}
+	if !strings.Contains(sb.String(), "1.2.3.4") {
+		t.Error("runParallel failed to process valid file after error")
+	}
+}
+
+func TestProcessReaderScannerError(t *testing.T) {
+	t.Parallel()
+
+	// A reader that returns an error to trigger scanner.Err()
+	// Large line to trigger bufio.Scanner error
+	largeLine := strings.Repeat("a", 128*1024)
+	r := strings.NewReader(largeLine)
+
+	args := setupTestArgs("1.2.3.4", true, false, false)
+	err := ProcessReader(context.Background(), r, args, func(lr LineResult) error { return nil })
+	if err == nil || !strings.Contains(err.Error(), "token too long") {
+		t.Errorf("expected token too long error, got %v", err)
+	}
+}
+
+func TestGetFileNamesFromArgsError(t *testing.T) {
+	t.Parallel()
+
+	// Test non-existent path
+	_, err := getFileNamesFromArgs([]string{"/nonexistent/path"})
+	if err == nil {
+		t.Error("expected error for non-existent path")
+	}
+}
+
+func TestRunModeSelection(t *testing.T) {
+	t.Parallel()
+
+	// Case 1: Workers == 1, Sort == false -> Sequential
+	// Case 2: Workers != 1 or Sort == true -> Parallel
+
+	tmpFile, _ := os.CreateTemp("", "mode_sel_*.txt")
+	defer os.Remove(tmpFile.Name())
+	tmpFile.WriteString("1.2.3.4\n")
+	tmpFile.Close()
+
+	t.Run("Force Parallel via Sort", func(t *testing.T) {
+		args := setupTestArgs("1.2.3.4", true, false, false)
+		args.Workers = 1
+		args.Sort = true
+		args.InputFiles = []string{tmpFile.Name()}
+
+		var sb strings.Builder
+		err := Run(context.Background(), &sb, args)
+		if err != nil {
+			t.Fatalf("Run failed: %v", err)
+		}
+		if !strings.Contains(sb.String(), "1.2.3.4") {
+			t.Error("Parallel (sorted) output missing match")
+		}
+	})
+
+	t.Run("Force Parallel via Workers > 1", func(t *testing.T) {
+		args := setupTestArgs("1.2.3.4", true, false, false)
+		args.Workers = 2
+		args.InputFiles = []string{tmpFile.Name()}
+
+		var sb strings.Builder
+		err := Run(context.Background(), &sb, args)
+		if err != nil {
+			t.Fatalf("Run failed: %v", err)
+		}
+		if !strings.Contains(sb.String(), "1.2.3.4") {
+			t.Error("Parallel output missing match")
+		}
+	})
 }
