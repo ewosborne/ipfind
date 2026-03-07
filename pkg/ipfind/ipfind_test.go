@@ -618,10 +618,10 @@ func FuzzGetRegexMatches(f *testing.F) {
 	f.Fuzz(func(t *testing.T, line string, isIPv4 bool) {
 		lr := LineResult{Line: line}
 		af := IPv6
-		re := ipv6Regex_noSlash
+		re := ipv6RegexNoSlash
 		if isIPv4 {
 			af = IPv4
-			re = ipv4Regex_noSlash
+			re = ipv4RegexNoSlash
 		}
 		_ = lr.getRegexMatches(re, af)
 	})

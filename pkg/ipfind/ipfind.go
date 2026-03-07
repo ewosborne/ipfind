@@ -20,10 +20,10 @@ import (
 )
 
 var (
-	ipv4Regex_withSlash = regexp.MustCompile(`(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3}(/\d{1,2}))`)
-	ipv6Regex_withSlash = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3}))`)
-	ipv4Regex_noSlash   = regexp.MustCompile(`(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3}(/\d{1,2})?)`)
-	ipv6Regex_noSlash   = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)
+	ipv4RegexWithSlash = regexp.MustCompile(`(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3}(/\d{1,2}))`)
+	ipv6RegexWithSlash = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3}))`)
+	ipv4RegexNoSlash   = regexp.MustCompile(`(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3}(/\d{1,2})?)`)
+	ipv6RegexNoSlash   = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)
 )
 
 func (l *LineResult) getRegexMatches(ipre *regexp.Regexp, af AddressFamily) []string {
@@ -439,11 +439,11 @@ func ArgMassage(cliArgs Args) Args {
 	}
 
 	if cliArgs.Slash {
-		cliArgs.IPv4Regex = ipv4Regex_withSlash
-		cliArgs.IPv6Regex = ipv6Regex_withSlash
+		cliArgs.IPv4Regex = ipv4RegexWithSlash
+		cliArgs.IPv6Regex = ipv6RegexWithSlash
 	} else {
-		cliArgs.IPv4Regex = ipv4Regex_noSlash
-		cliArgs.IPv6Regex = ipv6Regex_noSlash
+		cliArgs.IPv4Regex = ipv4RegexNoSlash
+		cliArgs.IPv6Regex = ipv6RegexNoSlash
 	}
 
 	if cliArgs.Ipaddr != nil {
