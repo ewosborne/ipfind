@@ -2,6 +2,7 @@ package ipfind
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -145,8 +146,12 @@ func TestWriteBufferedResult(t *testing.T) {
 		if err != nil {
 			t.Fatalf("writeBufferedResult failed: %v", err)
 		}
-		if !strings.Contains(sb.String(), `"Line": "1.2.3.4"`) {
-			t.Errorf("expected JSON to contain line content, got %q", sb.String())
+		var lr LineResult
+		if err := json.Unmarshal([]byte(sb.String()), &lr); err != nil {
+			t.Fatalf("failed to unmarshal JSON: %v. Output: %q", err, sb.String())
+		}
+		if lr.Line != "1.2.3.4" {
+			t.Errorf("expected Line to be 1.2.3.4, got %q", lr.Line)
 		}
 	})
 
@@ -188,8 +193,12 @@ func TestWriteBufferedResult(t *testing.T) {
 		if err != nil {
 			t.Fatalf("writeBufferedResult failed: %v", err)
 		}
-		if !strings.Contains(sb.String(), `"Line": "2001:db8::1"`) {
-			t.Errorf("expected JSON to contain line content, got %q", sb.String())
+		var lr LineResult
+		if err := json.Unmarshal([]byte(sb.String()), &lr); err != nil {
+			t.Fatalf("failed to unmarshal JSON: %v. Output: %q", err, sb.String())
+		}
+		if lr.Line != "2001:db8::1" {
+			t.Errorf("expected Line to be 2001:db8::1, got %q", lr.Line)
 		}
 	})
 }
@@ -251,8 +260,21 @@ func TestRunModes(t *testing.T) {
 
 				output := sb.String()
 				if tt.json {
-					if !strings.HasPrefix(output, "[") || !strings.HasSuffix(strings.TrimSpace(output), "]") {
-						t.Error("JSON output missing array brackets")
+					var results []LineResult
+					if err := json.Unmarshal([]byte(output), &results); err != nil {
+						t.Fatalf("failed to unmarshal JSON: %v", err)
+					}
+					found1, found2 := false, false
+					for _, r := range results {
+						if strings.Contains(r.Line, ipv.expect1) {
+							found1 = true
+						}
+						if strings.Contains(r.Line, ipv.expect2) {
+							found2 = true
+						}
+					}
+					if !found1 || !found2 {
+						t.Errorf("JSON output missing expected IPs %s or %s", ipv.expect1, ipv.expect2)
 					}
 				} else {
 					if !strings.Contains(output, ipv.expect1) || !strings.Contains(output, ipv.expect2) {
@@ -449,12 +471,17 @@ func TestLongestFlag(t *testing.T) {
 		}
 
 		output := sb.String()
-		if strings.Contains(output, "10.0.0.0/8") {
-			t.Errorf("JSON Output should not contain short prefix /8. Got:\n%s", output)
+		var results []LineResult
+		if err := json.Unmarshal([]byte(output), &results); err != nil {
+			t.Fatalf("failed to unmarshal JSON: %v. Output:\n%s", err, output)
 		}
-		// Count occurrences of Indent to ensure correct number of items (should be 2)
-		if strings.Count(output, "\"Idx\"") != 2 {
-			t.Errorf("Expected 2 JSON objects, got %d. Output:\n%s", strings.Count(output, "\"Idx\""), output)
+		if len(results) != 2 {
+			t.Errorf("Expected 2 JSON objects, got %d", len(results))
+		}
+		for _, r := range results {
+			if strings.Contains(r.Line, "10.0.0.0/8") {
+				t.Error("JSON Output should not contain short prefix /8")
+			}
 		}
 	})
 
@@ -504,11 +531,17 @@ func TestLongestFlag(t *testing.T) {
 		}
 
 		output := sb.String()
-		if strings.Contains(output, "2001:db8::/32") {
-			t.Errorf("JSON Output should not contain short prefix /32. Got:\n%s", output)
+		var results []LineResult
+		if err := json.Unmarshal([]byte(output), &results); err != nil {
+			t.Fatalf("failed to unmarshal JSON: %v. Output:\n%s", err, output)
 		}
-		if strings.Count(output, "\"Idx\"") != 2 {
-			t.Errorf("Expected 2 JSON objects, got %d. Output:\n%s", strings.Count(output, "\"Idx\""), output)
+		if len(results) != 2 {
+			t.Errorf("Expected 2 JSON objects, got %d", len(results))
+		}
+		for _, r := range results {
+			if strings.Contains(r.Line, "2001:db8::/32") {
+				t.Error("JSON Output should not contain short prefix /32")
+			}
 		}
 	})
 }
@@ -1207,8 +1240,15 @@ func TestRunSequentialModes(t *testing.T) {
 			t.Fatalf("Run failed: %v", err)
 		}
 		output := sb.String()
-		if !strings.HasPrefix(output, "[") || !strings.Contains(output, ",") || !strings.HasSuffix(strings.TrimSpace(output), "]") {
-			t.Errorf("JSON output format incorrect for sequential mode:\n%s", output)
+		var results []LineResult
+		if err := json.Unmarshal([]byte(output), &results); err != nil {
+			t.Fatalf("failed to unmarshal JSON: %v. Output:\n%s", err, output)
+		}
+		if len(results) != 2 {
+			t.Errorf("Expected 2 JSON objects, got %d", len(results))
+		}
+		if results[0].Line != "1.2.3.4" || results[1].Line != "1.2.3.5" {
+			t.Errorf("JSON output missing expected matches. Got:\n%v", results)
 		}
 	})
 
