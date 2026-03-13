@@ -4,10 +4,11 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"os"
+
 	"github.com/charmbracelet/log"
 	"github.com/ewosborne/ipfind/pkg/ipfind"
 	"github.com/urfave/cli/v3"
-	"os"
 )
 
 //go:embed RootCommandHelpTemplate.txt
@@ -75,6 +76,11 @@ func main() {
 				Name:        "sort",
 				Usage:       "Sort output by filename",
 				Destination: &cliArgs.Sort,
+			},
+			&cli.StringFlag{
+				Name:        "pretext",
+				Usage:       "Text to look for before match",
+				Destination: &cliArgs.Pretext,
 			},
 		},
 		MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{

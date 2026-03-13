@@ -46,6 +46,7 @@ type Args struct {
 	IPv4Regex, IPv6Regex, IPRegex *regexp.Regexp
 	Workers                       int
 	Sort                          bool
+	Pretext                       string
 }
 
 func NewFileResult(f InputFile) *FileResult {
