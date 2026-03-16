@@ -33,68 +33,71 @@ EXAMPLES
 10.1.1.1/25
 10.1.1.1/32
 
-
-Match conditions: --exact/-e, --subnets-of/-s, --contains/-c
-With the --exact/-e flag, ipfind finds the exact network 10.1.0.0/23.  Note that what's passed in is 10.1.0.2/23. ipfind knows to turn this into the 23-bit network 10.1.0.0/23.
-If you want to keep ipfind from turning a network+host bits into its canonical form, pass the argument --no-canonize.
-Then it looks for exactly that bit pattern. This is experimental and I haven't found much use for it so it may not handle corner cases well.
-
-ipfind 10.1.0.2/23 data/docs.txt --exact
-data/docs.txt:2:10.1.0.0/23
-
-With --subnets-of/-s, ipfind finds all subnets of 10.1.0/0/23. This inclues 10.1.0.0/23 itself.
-ipfind 10.1.0.2/23 data/docs.txt --subnets-of
-
-data/docs.txt:1:10.1.1.0/24
-data/docs.txt:2:10.1.0.0/23
-data/docs.txt:6:10.1.1.0/25
-data/docs.txt:7:10.1.1.0/30
-data/docs.txt:8:10.1.1.1/25
-data/docs.txt:9:10.1.1.1/32
-
-
-The --contains/-c flag is the inverse of --subnets-of. It find all networks which contain 10.1.0.0/23. This, too, includes 10.1.0.0/23.
-
-ipfind 10.1.0.2/23 data/docs.txt --contains
-data/docs.txt:2:10.1.0.0/23
-data/docs.txt:4:10.1.0.0/16
-data/docs.txt:5:10.1.0.0/18
-
-
-Display options: --json/-j and --trie/-t
-The default output is a list of {filename}:{line number}:{matching line}, as you see above. There's also a --json flag:
-
-ipfind 10.1.0.2/23 data/docs.txt --contains --json
-[
-  {
-    "LineNumber": 2,
-    "Line": "10.1.0.0/23"
-  },
-  {
-    "LineNumber": 3,
-    "Line": "10.1.0.0/23 10.1.0.0/23"
-  },
-  {
-    "LineNumber": 5,
-    "Line": "10.1.0.0/16"
-  },
-  {
-    "LineNumber": 6,
-    "Line": "10.1.0.0/18"
-  }
-]
-
-And there's a --trie option which prints out the trie that a routing table would be built out of to reach the network in question:
-
-ipfind 10.1.0.2/23 data/docs.txt --contains --trie
-
-○ 0.0.0.0/0 (3)
-└─● 10.1.0.0/16 (3)
-  └─● 10.1.0.0/18 (2)
-    └─● 10.1.0.0/23 (1)
-
-
-The trie stuff is neat but very experimental.     
+Search Modes
+--exact/-e
+ With the --exact/-e flag, ipfind finds the exact network 10.1.0.0/23.  Note that what's passed in is 10.1.0.2/23. ipfind  knows to turn this into the 23-bit network 10.1.0.0/23.
+ If you want to keep ipfind from turning a network+host bits into its canonical form, pass the argument --no-canonize.
+ Then it looks for exactly that bit pattern. This is experimental and I haven't found much use for it so it may not  handle corner cases well.
+ 
+ ipfind 10.1.0.2/23 data/docs.txt --exact
+ data/docs.txt:2:10.1.0.0/23
+ 
+--subnets-of/-s
+ With --subnets-of/-s, ipfind finds all subnets of 10.1.0/0/23. This inclues 10.1.0.0/23 itself.
+ ipfind 10.1.0.2/23 data/docs.txt --subnets-of
+ 
+ data/docs.txt:1:10.1.1.0/24
+ data/docs.txt:2:10.1.0.0/23
+ data/docs.txt:6:10.1.1.0/25
+ data/docs.txt:7:10.1.1.0/30
+ data/docs.txt:8:10.1.1.1/25
+ data/docs.txt:9:10.1.1.1/32
+ 
+ 
+--contains/-c
+ The --contains/-c flag is the inverse of --subnets-of. It find all networks which contain 10.1.0.0/23. This, too,  includes 10.1.0.0/23.
+ 
+ ipfind 10.1.0.2/23 data/docs.txt --contains
+ data/docs.txt:2:10.1.0.0/23
+ data/docs.txt:4:10.1.0.0/16
+ data/docs.txt:5:10.1.0.0/18
+ 
+Output Modes
+--json/-j
+ The default output is a list of {filename}:{line number}:{matching line}, as you see above. There's also a --json flag:
+ 
+ ipfind 10.1.0.2/23 data/docs.txt --contains --json
+ [
+   {
+     "LineNumber": 2,
+     "Line": "10.1.0.0/23"
+   },
+   {
+     "LineNumber": 3,
+     "Line": "10.1.0.0/23 10.1.0.0/23"
+   },
+   {
+     "LineNumber": 5,
+     "Line": "10.1.0.0/16"
+   },
+   {
+     "LineNumber": 6,
+     "Line": "10.1.0.0/18"
+   }
+ ]
+ 
+-trie/-t
+ There's a --trie option which prints out the trie that a routing table would be built out of to reach the network in  question:
+ 
+ ipfind 10.1.0.2/23 data/docs.txt --contains --trie
+ 
+ ○ 0.0.0.0/0 (3)
+ └─● 10.1.0.0/16 (3)
+   └─● 10.1.0.0/18 (2)
+     └─● 10.1.0.0/23 (1)
+ 
+ 
+ The trie stuff is neat but very experimental.     
 
 
 WEBSITE
