@@ -19,7 +19,7 @@ type InputFile struct {
 }
 
 type LineResult struct {
-	Idx              int
+	LineNumber       int
 	Line             string
 	IPRegexMatches   []string            `json:"-"` // Don't include in JSON output
 	ConditionMatches []*ipaddr.IPAddress `json:"-"` // Don't include in JSON output

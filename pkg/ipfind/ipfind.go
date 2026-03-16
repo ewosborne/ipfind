@@ -186,7 +186,7 @@ func ProcessReader(ctx context.Context, r io.Reader, args Args, onMatch func(Lin
 			continue
 		}
 
-		lineObj := LineResult{Idx: idx, Line: line}
+		lineObj := LineResult{LineNumber: idx, Line: line}
 		lineObj.IPRegexMatches = lineObj.getRegexMatches(args.IPRegex, args.AddressFamily)
 
 		matched := false
@@ -265,7 +265,7 @@ func runSequential(ctx context.Context, w io.Writer, inputFiles []InputFile, arg
 				return nil
 			}
 
-			fmt.Fprintf(w, "%v:%v:%v\n", fileName.Filename, lr.Idx, lr.Line)
+			fmt.Fprintf(w, "%v:%v:%v\n", fileName.Filename, lr.LineNumber, lr.Line)
 			return nil
 		}
 
@@ -417,7 +417,7 @@ func writeBufferedResult(w io.Writer, fr *FileResult, args Args, firstJson *bool
 			}
 			fmt.Fprintf(w, "  %s", string(b))
 		} else {
-			fmt.Fprintf(w, "%v:%v:%v\n", fr.Filename, line.Idx, line.Line)
+			fmt.Fprintf(w, "%v:%v:%v\n", fr.Filename, line.LineNumber, line.Line)
 		}
 	}
 	return nil

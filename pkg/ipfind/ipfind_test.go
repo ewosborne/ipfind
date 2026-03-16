@@ -89,8 +89,8 @@ func TestProcessReader(t *testing.T) {
 
 			// Verify specific line numbers
 			for i, lineNum := range tt.expectedLines {
-				if i < len(matchedLines) && matchedLines[i].Idx != lineNum {
-					t.Errorf("expected match on line %d, got %d", lineNum, matchedLines[i].Idx)
+				if i < len(matchedLines) && matchedLines[i].LineNumber != lineNum {
+					t.Errorf("expected match on line %d, got %d", lineNum, matchedLines[i].LineNumber)
 				}
 			}
 
@@ -112,8 +112,8 @@ func TestWriteBufferedResult(t *testing.T) {
 		InputFile: InputFile{Filename: "test.txt"},
 		MatchedLines: []*LineResult{
 			{
-				Idx:  1,
-				Line: "1.2.3.4",
+				LineNumber: 1,
+				Line:       "1.2.3.4",
 				ConditionMatches: []*ipaddr.IPAddress{
 					ipaddr.NewIPAddressString("1.2.3.4").GetAddress(),
 				},
@@ -159,8 +159,8 @@ func TestWriteBufferedResult(t *testing.T) {
 		InputFile: InputFile{Filename: "test.txt"},
 		MatchedLines: []*LineResult{
 			{
-				Idx:  1,
-				Line: "2001:db8::1",
+				LineNumber: 1,
+				Line:       "2001:db8::1",
 				ConditionMatches: []*ipaddr.IPAddress{
 					ipaddr.NewIPAddressString("2001:db8::1").GetAddress(),
 				},
@@ -366,11 +366,11 @@ func TestRunJSONIndentation(t *testing.T) {
 
 		expected := `[
   {
-    "Idx": 1,
+    "LineNumber": 1,
     "Line": "1.2.3.4"
   },
   {
-    "Idx": 2,
+    "LineNumber": 2,
     "Line": "1.2.3.4"
   }
 ]
@@ -406,11 +406,11 @@ func TestRunJSONIndentation(t *testing.T) {
 
 		expected := `[
   {
-    "Idx": 1,
+    "LineNumber": 1,
     "Line": "2001:db8::1"
   },
   {
-    "Idx": 2,
+    "LineNumber": 2,
     "Line": "2001:db8::1"
   }
 ]
