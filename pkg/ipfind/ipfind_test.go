@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -618,10 +619,10 @@ func FuzzGetRegexMatches(f *testing.F) {
 	f.Fuzz(func(t *testing.T, line string, isIPv4 bool) {
 		lr := LineResult{Line: line}
 		af := IPv6
-		re := ipv6RegexNoSlash
+		re := regexp.MustCompile(ipv6RegexNoSlash)
 		if isIPv4 {
 			af = IPv4
-			re = ipv4RegexNoSlash
+			re = regexp.MustCompile(ipv4RegexNoSlash)
 		}
 		_ = lr.getRegexMatches(re, af)
 	})

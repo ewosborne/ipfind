@@ -20,17 +20,19 @@ import (
 )
 
 var (
-	ipv4RegexWithSlash = regexp.MustCompile(`(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3}(/\d{1,2}))`)
-	ipv6RegexWithSlash = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3}))`)
-	ipv4RegexNoSlash   = regexp.MustCompile(`(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3}(/\d{1,2})?)`)
-	ipv6RegexNoSlash   = regexp.MustCompile(`([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`)
+	ipv4RegexWithSlash = `foo (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3}(/\d{1,2}))`
+	ipv6RegexWithSlash = `([:0-9a-fA-F]{2,39}(/[0-9]{1,3}))`
+	ipv4RegexNoSlash   = `foo (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3}(/\d{1,2})?)`
+	ipv6RegexNoSlash   = `([:0-9a-fA-F]{2,39}(/[0-9]{1,3})?)`
 )
 
 func (l *LineResult) getRegexMatches(ipre *regexp.Regexp, af AddressFamily) []string {
 	var ret []string
+	log.Debug("Looking at line", "l", l.Line)
 	switch af {
 	case IPv4:
 		ret = ipre.FindAllString(l.Line, -1)
+		log.Debug("found a match", "l", l.Line, "re", ipre.String())
 	case IPv6:
 		for _, m := range ipre.FindAllString(l.Line, -1) {
 			if strings.Contains(m, ":") {
@@ -439,12 +441,13 @@ func ArgMassage(cliArgs Args) Args {
 	}
 
 	if cliArgs.Slash {
-		cliArgs.IPv4Regex = ipv4RegexWithSlash
-		cliArgs.IPv6Regex = ipv6RegexWithSlash
+		cliArgs.IPv4Regex = regexp.MustCompile(cliArgs.Pretext + ipv4RegexWithSlash)
+		cliArgs.IPv6Regex = regexp.MustCompile(cliArgs.Pretext + ipv6RegexWithSlash)
 	} else {
-		cliArgs.IPv4Regex = ipv4RegexNoSlash
-		cliArgs.IPv6Regex = ipv6RegexNoSlash
+		cliArgs.IPv4Regex = regexp.MustCompile(cliArgs.Pretext + ipv4RegexNoSlash)
+		cliArgs.IPv6Regex = regexp.MustCompile(cliArgs.Pretext + ipv6RegexNoSlash)
 	}
+	log.Print("regex is", "r", cliArgs.IPv4Regex.String())
 
 	if cliArgs.Ipaddr != nil {
 		if cliArgs.Ipaddr.IsIPv4() {
