@@ -67,18 +67,19 @@ The default output is a list of {filename}:{line number}:{matching line}, as you
 ipfind 10.1.0.2/23 data/docs.txt --contains --json
 [
   {
-    "Filename": "data/docs.txt",
-    "Idx": 2,
+    "LineNumber": 2,
     "Line": "10.1.0.0/23"
   },
   {
-    "Filename": "data/docs.txt",
-    "Idx": 4,
+    "LineNumber": 3,
+    "Line": "10.1.0.0/23 10.1.0.0/23"
+  },
+  {
+    "LineNumber": 5,
     "Line": "10.1.0.0/16"
   },
   {
-    "Filename": "data/docs.txt",
-    "Idx": 5,
+    "LineNumber": 6,
     "Line": "10.1.0.0/18"
   }
 ]
@@ -97,4 +98,4 @@ The trie stuff is neat but very experimental.
 
 
 WEBSITE
-  Here's the website.
+  https://github.com/ewosborne/ipfind
